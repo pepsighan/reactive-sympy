@@ -9,10 +9,6 @@ class ReactiveSymbol(sympy.Symbol):
         val._reactive_values = []
         return val
 
-    @property
-    def _values(self):
-        return self._reactive_values
-
     def _has_known_value(self):
         for v in self._values:
             if not isinstance(v, sympy.Expr):
@@ -29,10 +25,16 @@ class ReactiveSymbol(sympy.Symbol):
             or (isinstance(v, sympy.Expr) and len(v.free_symbols) == 0)
         ]
 
+    @property
+    def _values(self):
+        return self._reactive_values
+
     @_values.setter
     def value(self, v: any):
-        if not isinstance(v, list):
-            v = [v]
+        v = [v]
+        self._add_values(v)
+
+    def _add_values(self, v: list[any]):
         self._reactive_values.extend(v)
         self._reactive_values = list(set(self._reactive_values))
         self._react()
@@ -48,7 +50,7 @@ class ReactiveSymbol(sympy.Symbol):
                     if free._has_known_value():
                         continue
 
-                    free.value = sympy.solve(eq(r, v), free)
+                    free._add_values(sympy.solve(eq(r, v), free))
 
     def __str__(self):
         if self._reactive_values is None:
@@ -65,6 +67,6 @@ def eq(lhs, rhs) -> sympy.Eq:
     expr = sympy.Eq(lhs, rhs, evaluate=False)
     for sym in expr.free_symbols:
         solutions = sympy.solve(expr, sym)
-        sym.value = solutions
+        sym._add_values(solutions)
 
     return expr
