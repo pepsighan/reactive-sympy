@@ -1,4 +1,6 @@
+import sys
 import sympy
+import itertools
 
 
 class ReactiveSymbol(sympy.Symbol):
@@ -67,32 +69,54 @@ class ReactiveSympy:
         for sym in expr.free_symbols:
             solutions = sympy.solve(expr, sym)
             sym._add_values(solutions)
-        print({s: s.solutions for s in self._all_symbols})
+
+        print({s.name: s.solutions for s in self._all_symbols}, end="\n\n")
 
     def solve(self):
-        for s in self._all_symbols:
-            if len(s.known_values) > 0:
+        while True:
+            sorted_symbols = sorted(
+                self._all_symbols,
+                key=lambda x: sys.maxsize  # No need to solve this again.
+                if len(x.solutions) > 0
+                else min(len(x.free_symbols) for x in x._values),
+            )
+            symb = sorted_symbols.pop(0)
+
+            if len(symb.known_values) > 0:
                 continue
 
-            exprs = [*s._values]
+            for ex in symb._values:
+                values = [
+                    [
+                        value
+                        for value in free_symb._values
+                        if is_known_value(value) or free_symb not in value.free_symbols
+                    ]
+                    for free_symb in ex.free_symbols
+                ]
 
-            while len(exprs) > 0:
-                ex = exprs.pop(0)
+                value_symbs = [
+                    free_symb
+                    for free_symb, val in zip(ex.free_symbols, values)
+                    if len(val) > 0
+                ]
+                values = [v for v in values if len(v) > 0]
+                values_combo = list(itertools.product(*values))
 
-                for symb in ex.free_symbols:
-                    for sol in symb._values:
-                        if not is_known_value(sol) and symb in sol.free_symbols:
+                for values in values_combo:
+                    subs_ex = ex
+                    for i, (symb, value) in enumerate(zip(value_symbs, values)):
+                        if value_contains_previous_symbols(value, value_symbs[:i]):
                             continue
-                        ex_copy = ex.subs(symb, sol)
-                        if ex is not ex_copy:
-                            self.eq(s, ex_copy)
 
-        requires_calculation = any(
-            [True for s in self._all_symbols if len(s.known_values) == 0]
-        )
-        if requires_calculation:
-            print("calc")
-            self.solve()
+                        subs_ex = subs_ex.subs(symb, value)
+
+                    if ex is not subs_ex:
+                        self.eq(symb, subs_ex)
+
+            done = all([len(s.known_values) > 0 for s in self._all_symbols])
+            if done:
+                break
 
 
 def is_known_value(v: any):
@@ -104,3 +128,17 @@ def is_known_value(v: any):
         return p
     except AttributeError:
         return False
+
+
+def value_contains_previous_symbols(
+    haystack: any, search: list[ReactiveSymbol]
+) -> bool:
+    if is_known_value(haystack):
+        return False
+
+    for free_sym in haystack.free_symbols:
+        for s in search:
+            if s is free_sym:
+                return True
+
+    return False
