@@ -51,23 +51,35 @@ class ReactiveSympy:
         self._all_symbols = []
 
     def symbols(self, names: str):
-        symbs = list(sympy.symbols(names, cls=ReactiveSymbol))
-        self._all_symbols.extend(symbs)
-        return symbs
+        symbs = sympy.symbols(names, cls=ReactiveSymbol)
+        if isinstance(symbs, tuple):
+            self._all_symbols.extend(symbs)
+            return symbs
+        else:
+            self._all_symbols.append(symbs)
+            return (symbs,)
 
-    def _internal_eq(self, lhs: any, rhs: any) -> None:
+    def _internal_eq(
+        self, lhs: any, rhs: any, vars: list["ReactiveSympy"] | None = None
+    ) -> None:
         expr = sympy.Eq(lhs, rhs)
         for sym in expr.free_symbols:
             if len(sym.known_values) > 0:
                 continue
 
             solutions = sympy.solve(expr, sym)
+            if sym == self.symbols("y")[0]:
+                print(sym, solutions)
             solutions = [sympy.simplify(sol) for sol in solutions]
+
+            if vars is not None:
+                for v, sol in zip(vars, solutions):
+                    v.value = sol
+
             sym._add_values(solutions)
 
-    def eq(self, lhs: any, rhs: any) -> None:
-        self._internal_eq(lhs, rhs)
-        self._react()
+    def eq(self, lhs: any, rhs: any, vars: list["ReactiveSympy"] | None = None) -> None:
+        self._internal_eq(lhs, rhs, vars)
 
     def _react(self):
         for s in self._all_symbols:
@@ -79,26 +91,30 @@ class ReactiveSympy:
 
             while len(exprs) > 0:
                 ex = exprs.pop(0)
-                if is_known_value(ex):
-                    new_exprs.append(ex)
-                    continue
 
-                symb_values = []
+                symb_id = None
+                symb_replacement = None
                 for symb in ex.free_symbols:
-                    symb_values.append(
-                        [sol for sol in symb.solutions if s not in sol.free_symbols]
-                    )
+                    sym_sols = [
+                        sol
+                        for sol in symb.solutions
+                        if is_known_value(sol) or s not in sol.free_symbols
+                    ]
+                    if len(sym_sols) > 0:
+                        symb_id = symb
+                        sym_sols = sorted(sym_sols, key=lambda x: len(x.free_symbols))
+                        symb_replacement = sym_sols.pop(0)
+                        break
 
-                symb_value_combinations = list(itertools.product(*symb_values))
-                if len(symb_value_combinations) == 0:
+                if symb_id is None:
                     new_exprs.append(ex)
                     continue
 
-                for combination in symb_value_combinations:
-                    new_ex = copy.deepcopy(ex)
-                    for sym, val in zip(ex.free_symbols, combination):
-                        new_ex = sympy.simplify(new_ex.subs(sym, val))
+                new_ex = sympy.simplify(ex.subs(symb_id, symb_replacement))
+                if len(new_ex.free_symbols) < len(ex.free_symbols):
                     new_exprs.append(new_ex)
+                else:
+                    new_exprs.append(ex)
 
             s._reactive_values = list(set(new_exprs))
 
@@ -117,6 +133,7 @@ class ReactiveSympy:
                         s._reactive_values[lhs_i], s._reactive_values[rhs_j]
                     )
 
+        # print("+++" * 30)
         if changed:
             self._react()
 
