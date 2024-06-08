@@ -35,9 +35,16 @@ class ReactiveSymbol(sympy.Symbol):
         self._add_values(v)
 
     def _add_values(self, v: list[any]):
+        if len(v) == 0:
+            return
+
+        prev_len = len(self._reactive_values)
         self._reactive_values.extend(v)
         self._reactive_values = list(set(self._reactive_values))
-        self._react()
+        after_len = len(self._reactive_values)
+
+        if after_len != prev_len:
+            self._react()
 
     def _react(self):
         for v in self._values:
