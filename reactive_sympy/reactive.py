@@ -12,6 +12,20 @@ def is_known_value(v: any):
         return False
 
 
+def resolve_expression(ex: any):
+    if is_known_value(ex):
+        return [ex]
+
+    expressions = [ex]
+    for sym in ex.free_symbols:
+        ex_len = len(expressions)
+        for sol in sym.solutions:
+            for ex in expressions[:ex_len]:
+                expressions.append(sympy.simplify(ex.subs(sym, sol)))
+
+    return list(set(expressions))
+
+
 class ReactiveSymbol(sympy.Symbol):
     _reactive_values: list[any]
 
@@ -25,10 +39,11 @@ class ReactiveSymbol(sympy.Symbol):
         return [v for v in self._reactive_values if is_known_value(v)]
 
     @property
-    def solution(self):
+    def solutions(self):
         known = self.known_values
         if len(known) > 0:
             return known
+
         return self._reactive_values
 
     @property
@@ -70,38 +85,37 @@ class ReactiveSymbol(sympy.Symbol):
 
     def _react(self):
         for v in self._reactive_values:
-            rest = [
-                o
-                for o in self._reactive_values
-                if o is not v and isinstance(o, sympy.Expr)
-            ]
-            if len(rest) == 0:
-                continue
+            for r in self._reactive_values:
+                if is_known_value(r):
+                    continue
 
-            for r in rest:
                 for free in r.free_symbols:
                     if len(free.known_values) > 0:
                         continue
 
-                    sols = sympy.solve(eq(r, v), free)
-                    sols = [sympy.simplify(sol) for sol in sols]
-                    free._add_values(sols)
+                    eq(r, v)
 
     def __str__(self):
         if self._reactive_values is None:
             return self.name
 
-        return f"{self.name} = {self.solution}"
+        return f"{self.name} = {self.solutions}"
 
 
 def reactive_symbol(names: str) -> list[ReactiveSymbol]:
     return list(sympy.symbols(names, cls=ReactiveSymbol))
 
 
-def eq(lhs, rhs) -> sympy.Eq:
-    expr = sympy.Eq(lhs, rhs, evaluate=False)
-    for sym in expr.free_symbols:
-        solutions = sympy.solve(expr, sym)
-        sym._add_values(solutions)
+def eq(lhs, rhs) -> None:
+    lhses = resolve_expression(lhs)
+    rhses = resolve_expression(rhs)
 
-    return expr
+    for lhs in lhses:
+        for rhs in rhses:
+            if lhs == rhs:
+                continue
+
+            expr = sympy.Eq(lhs, rhs, evaluate=False)
+            for sym in expr.free_symbols:
+                solutions = sympy.solve(expr, sym)
+                sym._add_values(solutions)

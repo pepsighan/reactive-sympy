@@ -19,3 +19,13 @@ print(y)
 print(x)
 print(z)
 print(a)
+
+
+print("------" * 20)
+a.value = 2
+
+
+print(y)
+print(x)
+print(z)
+print(a)
