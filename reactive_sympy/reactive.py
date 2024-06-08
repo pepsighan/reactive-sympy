@@ -1,18 +1,17 @@
-import random
 import sympy
 
 
 class ReactiveSymbol(sympy.Symbol):
-    _reactive_values: list[any]
+    _values: list[any]
 
     def __new__(cls, name, **assumptions):
         val = super().__new__(cls, name, **assumptions)
-        val._reactive_values = []
+        val._values = []
         return val
 
     @property
     def known_values(self):
-        return [v for v in self._reactive_values if is_known_value(v)]
+        return [v for v in self._values if is_known_value(v)]
 
     @property
     def solutions(self):
@@ -20,13 +19,13 @@ class ReactiveSymbol(sympy.Symbol):
         if len(known) > 0:
             return known
 
-        return self._reactive_values
+        return self._values
 
     @property
-    def _values(self):
-        return self._reactive_values
+    def _internal_values(self):
+        return self._values
 
-    @_values.setter
+    @_internal_values.setter
     def value(self, v: any):
         v = [v]
         self._add_values(v)
@@ -35,9 +34,11 @@ class ReactiveSymbol(sympy.Symbol):
         if len(v) == 0:
             return
 
-        self._reactive_values.extend(v)
-        self._reactive_values = lean_solutions(self._reactive_values)
-        print(self, self._reactive_values)
+        self._values.extend([sympy.simplify(it) for it in v])
+        self._values = sorted(
+            list(set(self._values)),
+            key=lambda x: 0 if is_known_value(x) else len(x.free_symbols),
+        )
 
     def __str__(self):
         return self.name
@@ -61,77 +62,34 @@ class ReactiveSympy:
     def eq(self, lhs: any, rhs: any) -> None:
         expr = sympy.Eq(lhs, rhs)
         for sym in expr.free_symbols:
-            if len(sym.known_values) > 0:
-                continue
-
             solutions = sympy.solve(expr, sym)
-            solutions = [sympy.simplify(sol) for sol in solutions]
-
             sym._add_values(solutions)
+        print({s: s.solutions for s in self._all_symbols})
 
     def solve(self):
         for s in self._all_symbols:
             if len(s.known_values) > 0:
                 continue
 
-            exprs = s._reactive_values
-            new_exprs = []
+            exprs = [*s._values]
 
             while len(exprs) > 0:
                 ex = exprs.pop(0)
 
-                symb_id = None
-                symb_replacement = None
                 for symb in ex.free_symbols:
-                    sym_sols = [
-                        sol
-                        for sol in symb._reactive_values
-                        if is_known_value(sol) or s not in sol.free_symbols
-                    ]
-                    if len(sym_sols) > 0:
-                        symb_id = symb
-                        sym_sols = sorted(sym_sols, key=lambda x: len(x.free_symbols))
-                        symb_replacement = sym_sols.pop(
-                            random.randint(0, len(sym_sols) - 1)
-                        )
-                        break
-
-                if symb_id is None:
-                    new_exprs.append(ex)
-                    continue
-
-                new_ex = sympy.simplify(ex.subs(symb_id, symb_replacement))
-                if len(new_ex.free_symbols) < len(ex.free_symbols):
-                    new_exprs.append(new_ex)
-                else:
-                    new_exprs.append(ex)
-
-            s._reactive_values = lean_solutions(new_exprs)
+                    for sol in symb._values:
+                        if not is_known_value(sol) and symb in sol.free_symbols:
+                            continue
+                        ex_copy = ex.subs(symb, sol)
+                        if ex is not ex_copy:
+                            self.eq(s, ex_copy)
 
         requires_calculation = any(
             [True for s in self._all_symbols if len(s.known_values) == 0]
         )
         if requires_calculation:
+            print("calc")
             self.solve()
-
-
-def lean_solutions(sols):
-    vars = set([])
-    final_sols = set([])
-
-    for s in sols:
-        if is_known_value(s):
-            final_sols.add(s)
-            continue
-
-        var_used = ",".join(sorted([s.name for s in s.free_symbols]))
-        if var_used in vars:
-            continue
-
-        vars.add(var_used)
-        final_sols.add(s)
-
-    return list(final_sols)
 
 
 def is_known_value(v: any):

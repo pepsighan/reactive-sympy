@@ -16,6 +16,7 @@ sy.eq(y, k * x2**2 - 2 * k * x2 + l)
 # so we substitute y = 4 into the parabola equation
 sy.eq(y, 4)
 sy.eq(x1 - x2, 6)
+sy.solve()
 
 sy.eq(ans, x1**2 + y**2 + x2**2 + y**2)
 sy.solve()
