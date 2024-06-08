@@ -43,22 +43,6 @@ class ReactiveSymbol(sympy.Symbol):
         self._values.extend([sympy.simplify(it) for it in v])
         self._sort_values()
 
-    def distance_to_solution(self, symbols: set["ReactiveSymbol"] = set([])) -> int:
-        if len(self.known_values):
-            return 0
-
-        more_symbols = set([*symbols, self])
-
-        dists = []
-        for v in self._values:
-            for sym in v.free_symbols:
-                if sym in more_symbols:
-                    continue
-
-                dists.append(sym.distance_to_solution(more_symbols))
-
-        return min(dists) + 1
-
     def __str__(self):
         return self.name
 
@@ -94,6 +78,8 @@ class ReactiveSympy:
         return [sympy.simplify(s) for s in val]
 
     def solve(self):
+        print([sym.solutions for sym in self._all_symbols])
+        combinations = []
         for sym in self._all_symbols:
             other_symbols = [s for s in self._all_symbols if s is not sym]
             oth_values = [
@@ -104,11 +90,25 @@ class ReactiveSympy:
             ]
             oth_values = [vals for vals in oth_values if vals is not None]
             oth_values = [v for vals in oth_values for v in vals]
+            sym_values = sym.solutions
 
             for oth_val in oth_values:
-                for sym_val in sym.solutions:
-                    print(sym_val, "=", oth_val)
-                    self.eq(sym_val, oth_val)
+                for sym_val in sym_values:
+                    combinations.append((oth_val, sym_val))
+
+        combinations = sorted(
+            combinations, key=lambda x: sympy.count_ops(x[0]) + sympy.count_ops(x[1])
+        )
+        for lhs, rhs in combinations:
+            print(
+                lhs,
+                "=",
+                rhs,
+                ";;",
+                sympy.count_ops(lhs),
+                sympy.count_ops(rhs),
+            )
+            self.eq(sym_val, oth_val)
 
 
 def is_known_value(v: any):
