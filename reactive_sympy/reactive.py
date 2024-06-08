@@ -1,3 +1,4 @@
+import random
 import sympy
 
 
@@ -36,6 +37,7 @@ class ReactiveSymbol(sympy.Symbol):
 
         self._reactive_values.extend(v)
         self._reactive_values = lean_solutions(self._reactive_values)
+        print(self, self._reactive_values)
 
     def __str__(self):
         return self.name
@@ -83,13 +85,15 @@ class ReactiveSympy:
                 for symb in ex.free_symbols:
                     sym_sols = [
                         sol
-                        for sol in symb.solutions
+                        for sol in symb._reactive_values
                         if is_known_value(sol) or s not in sol.free_symbols
                     ]
                     if len(sym_sols) > 0:
                         symb_id = symb
                         sym_sols = sorted(sym_sols, key=lambda x: len(x.free_symbols))
-                        symb_replacement = sym_sols.pop(0)
+                        symb_replacement = sym_sols.pop(
+                            random.randint(0, len(sym_sols) - 1)
+                        )
                         break
 
                 if symb_id is None:
@@ -103,6 +107,12 @@ class ReactiveSympy:
                     new_exprs.append(ex)
 
             s._reactive_values = lean_solutions(new_exprs)
+
+        requires_calculation = any(
+            [True for s in self._all_symbols if len(s.known_values) == 0]
+        )
+        if requires_calculation:
+            self.solve()
 
 
 def lean_solutions(sols):
