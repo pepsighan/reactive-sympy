@@ -78,37 +78,42 @@ class ReactiveSympy:
         return [sympy.simplify(s) for s in val]
 
     def solve(self):
-        print([sym.solutions for sym in self._all_symbols])
-        combinations = []
-        for sym in self._all_symbols:
-            other_symbols = [s for s in self._all_symbols if s is not sym]
-            oth_values = [
-                self.expr_in_terms(oth_sym, oth_expr, sym)
-                for oth_sym in other_symbols
-                for oth_expr in oth_sym.solutions
-                if not is_known_value(oth_expr) and sym in oth_expr.free_symbols
-            ]
-            oth_values = [vals for vals in oth_values if vals is not None]
-            oth_values = [v for vals in oth_values for v in vals]
-            sym_values = sym.solutions
+        while True:
+            combinations = []
+            for sym in self._all_symbols:
+                other_symbols = [s for s in self._all_symbols if s is not sym]
+                oth_values = [
+                    self.expr_in_terms(oth_sym, oth_expr, sym)
+                    for oth_sym in other_symbols
+                    for oth_expr in oth_sym.solutions
+                    if not is_known_value(oth_expr) and sym in oth_expr.free_symbols
+                ]
+                oth_values = [vals for vals in oth_values if vals is not None]
+                oth_values = [v for vals in oth_values for v in vals]
+                sym_values = sym.solutions
 
-            for oth_val in oth_values:
-                for sym_val in sym_values:
-                    combinations.append((oth_val, sym_val))
+                for oth_val in oth_values:
+                    for sym_val in sym_values:
+                        combinations.append((oth_val, sym_val))
 
-        combinations = sorted(
-            combinations, key=lambda x: sympy.count_ops(x[0]) + sympy.count_ops(x[1])
-        )
-        for lhs, rhs in combinations:
-            print(
-                lhs,
-                "=",
-                rhs,
-                ";;",
-                sympy.count_ops(lhs),
-                sympy.count_ops(rhs),
+            combinations = sorted(
+                combinations,
+                key=lambda x: sympy.count_ops(x[0]) + sympy.count_ops(x[1]),
             )
-            self.eq(sym_val, oth_val)
+            for lhs, rhs in combinations:
+                print(
+                    lhs,
+                    "=",
+                    rhs,
+                    ";;",
+                    sympy.count_ops(lhs),
+                    sympy.count_ops(rhs),
+                )
+                self.eq(sym_val, oth_val)
+
+            all_solved = all([len(s.known_values) > 0 for s in self._all_symbols])
+            if all_solved:
+                break
 
 
 def is_known_value(v: any):
