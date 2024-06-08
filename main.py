@@ -12,6 +12,7 @@ print(a)
 print("------" * 20)
 x.value = 3
 
+
 eq(z + y, a + x)
 
 print(y)

@@ -1,6 +1,17 @@
 import sympy
 
 
+def is_known_value(v: any):
+    if isinstance(v, (int, float, complex)):
+        return True
+
+    try:
+        p = v.is_number
+        return p
+    except AttributeError:
+        return False
+
+
 class ReactiveSymbol(sympy.Symbol):
     _reactive_values: list[any]
 
@@ -11,12 +22,7 @@ class ReactiveSymbol(sympy.Symbol):
 
     @property
     def known_values(self):
-        return [
-            v
-            for v in self._reactive_values
-            if not isinstance(v, sympy.Expr)
-            or (isinstance(v, sympy.Expr) and len(v.free_symbols) == 0)
-        ]
+        return [v for v in self._reactive_values if is_known_value(v)]
 
     @property
     def solution(self):
@@ -39,7 +45,23 @@ class ReactiveSymbol(sympy.Symbol):
             return
 
         prev_len = len(self._reactive_values)
-        self._reactive_values.extend(v)
+
+        vars_used = set(
+            [
+                s
+                for r in self._reactive_values
+                if not is_known_value(r)
+                for s in r.free_symbols
+            ]
+        )
+        filtered_v = [
+            it
+            for it in v
+            if is_known_value(it)
+            or not all([sym in vars_used for sym in it.free_symbols])
+        ]
+
+        self._reactive_values.extend(filtered_v)
         self._reactive_values = list(set(self._reactive_values))
         after_len = len(self._reactive_values)
 
