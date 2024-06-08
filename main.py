@@ -1,22 +1,24 @@
-from reactive_sympy.reactive import eq, reactive_symbol
+from reactive_sympy.reactive import ReactiveSympy
+
+sy = ReactiveSympy()
 
 # define the symbols
-x1, x2, y, k, l, ans = reactive_symbol("x1 x2 y k l ans")
+x1, x2, y, k, l, ans = sy.symbols("x1 x2 y k l ans")
 
 # define the parabola equation
-eq(y, k * x1**2 - 2 * k * x1 + l)
-eq(y, k * x2**2 - 2 * k * x2 + l)
+sy.eq(y, k * x1**2 - 2 * k * x1 + l)
+sy.eq(y, k * x2**2 - 2 * k * x2 + l)
 
 # the parabola intersects the line y = 4 at two points A and B
 # so we substitute y = 4 into the parabola equation
-eq(y, 4)
-eq(x1 - x2, 6)
+sy.eq(y, 4)
+sy.eq(x1 - x2, 6)
 
-eq(ans, x1**2 + y**2 + x2**2 + y**2)
+sy.eq(ans, x1**2 + y**2 + x2**2 + y**2)
 
-print(x1)
-print(x2)
-print(y)
-print(k)
-print(l)
-print(ans)
+print(f"{x1.solutions=}")
+print(f"{x2.solutions=}")
+print(f"{y.solutions=}")
+print(f"{k.solutions=}")
+print(f"{l.solutions=}")
+print(f"{ans.solutions=}")

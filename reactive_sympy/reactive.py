@@ -1,29 +1,6 @@
 import sympy
-
-
-def is_known_value(v: any):
-    if isinstance(v, (int, float, complex)):
-        return True
-
-    try:
-        p = v.is_number
-        return p
-    except AttributeError:
-        return False
-
-
-def resolve_expression(ex: any):
-    if is_known_value(ex):
-        return [ex]
-
-    expressions = [ex]
-    for sym in ex.free_symbols:
-        ex_len = len(expressions)
-        for sol in sym.solutions:
-            for ex in expressions[:ex_len]:
-                expressions.append(sympy.simplify(ex.subs(sym, sol)))
-
-    return list(set(expressions))
+import itertools
+import copy
 
 
 class ReactiveSymbol(sympy.Symbol):
@@ -59,63 +36,72 @@ class ReactiveSymbol(sympy.Symbol):
         if len(v) == 0:
             return
 
-        prev_len = len(self._reactive_values)
-
-        vars_used = set(
-            [
-                s
-                for r in self._reactive_values
-                if not is_known_value(r)
-                for s in r.free_symbols
-            ]
-        )
-        filtered_v = [
-            it
-            for it in v
-            if is_known_value(it)
-            or not all([sym in vars_used for sym in it.free_symbols])
-        ]
-
-        self._reactive_values.extend(filtered_v)
+        self._reactive_values.extend(v)
         self._reactive_values = list(set(self._reactive_values))
-        after_len = len(self._reactive_values)
 
-        if after_len != prev_len:
+    def __str__(self):
+        return self.name
+
+
+class ReactiveSympy:
+    _all_symbols: list[ReactiveSymbol]
+
+    def __init__(self) -> None:
+        self._all_symbols = []
+
+    def symbols(self, names: str):
+        symbs = list(sympy.symbols(names, cls=ReactiveSymbol))
+        self._all_symbols.extend(symbs)
+        return symbs
+
+    def eq(self, lhs: any, rhs: any) -> None:
+        expr = sympy.Eq(lhs, rhs, evaluate=False)
+        for sym in expr.free_symbols:
+            solutions = sympy.solve(expr, sym)
+            sym._add_values(solutions)
             self._react()
 
     def _react(self):
-        for v in self._reactive_values:
-            for r in self._reactive_values:
-                if is_known_value(r):
-                    continue
-
-                for free in r.free_symbols:
-                    if len(free.known_values) > 0:
-                        continue
-
-                    eq(r, v)
-
-    def __str__(self):
-        if self._reactive_values is None:
-            return self.name
-
-        return f"{self.name} = {self.solutions}"
-
-
-def reactive_symbol(names: str) -> list[ReactiveSymbol]:
-    return list(sympy.symbols(names, cls=ReactiveSymbol))
-
-
-def eq(lhs, rhs) -> None:
-    lhses = resolve_expression(lhs)
-    rhses = resolve_expression(rhs)
-
-    for lhs in lhses:
-        for rhs in rhses:
-            if lhs == rhs:
+        for s in self._all_symbols:
+            if len(s.known_values) > 0:
                 continue
 
-            expr = sympy.Eq(lhs, rhs, evaluate=False)
-            for sym in expr.free_symbols:
-                solutions = sympy.solve(expr, sym)
-                sym._add_values(solutions)
+            exprs = [v for v in s._reactive_values]
+            new_exprs = []
+
+            while len(exprs) > 0:
+                ex = exprs.pop(0)
+                if is_known_value(ex):
+                    continue
+
+                unknowns = ex.free_symbols
+                unknowns_values = []
+                for unknown in unknowns:
+                    sols = [
+                        sol
+                        for sol in unknown.solutions
+                        if is_known_value(sol) or s not in sol.free_symbols
+                    ]
+                    unknowns_values.append(sols)
+
+                unknown_combinations = list(itertools.product(*unknowns_values))
+                for combination in unknown_combinations:
+                    print(s, combination)
+                    new_ex = copy.deepcopy(ex)
+                    for sym, val in zip(unknowns, combination):
+                        new_ex = sympy.simplify(new_ex.subs(sym, val))
+                        # print(s, new_ex)
+                    new_exprs.append(new_ex)
+
+        s._reactive_values = new_exprs
+
+
+def is_known_value(v: any):
+    if isinstance(v, (int, float, complex)):
+        return True
+
+    try:
+        p = v.is_number
+        return p
+    except AttributeError:
+        return False
