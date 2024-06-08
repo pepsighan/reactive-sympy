@@ -1,6 +1,7 @@
-import sympy
-import itertools
 import copy
+import itertools
+
+import sympy
 
 
 class ReactiveSymbol(sympy.Symbol):
@@ -57,6 +58,9 @@ class ReactiveSympy:
     def _internal_eq(self, lhs: any, rhs: any) -> None:
         expr = sympy.Eq(lhs, rhs)
         for sym in expr.free_symbols:
+            if len(sym.known_values) > 0:
+                continue
+
             solutions = sympy.solve(expr, sym)
             solutions = [sympy.simplify(sol) for sol in solutions]
             sym._add_values(solutions)
