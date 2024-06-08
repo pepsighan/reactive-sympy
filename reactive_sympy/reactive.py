@@ -2,7 +2,12 @@ import sympy
 
 
 class ReactiveSymbol(sympy.Symbol):
-    _reactive_value: any = None
+    _reactive_value: list[any]
+
+    def __new__(cls, name, **assumptions):
+        val = super().__new__(cls, name, **assumptions)
+        val._reactive_value = []
+        return val
 
     @property
     def value(self):
@@ -10,7 +15,9 @@ class ReactiveSymbol(sympy.Symbol):
 
     @value.setter
     def value(self, v: any):
-        self._reactive_value = v
+        if not isinstance(v, list):
+            v = [v]
+        self._reactive_value.extend(v)
 
     def __str__(self):
         if self._reactive_value is None:
@@ -21,3 +28,12 @@ class ReactiveSymbol(sympy.Symbol):
 
 def reactive_symbol(names: str) -> list[ReactiveSymbol]:
     return list(sympy.symbols(names, cls=ReactiveSymbol))
+
+
+def eq(lhs, rhs) -> sympy.Eq:
+    expr = sympy.Eq(lhs, rhs, evaluate=False)
+    for sym in expr.free_symbols:
+        solutions = sympy.solve(expr, sym)
+        sym.value = solutions
+
+    return expr
