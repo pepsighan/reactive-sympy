@@ -19,6 +19,13 @@ class ReactiveSymbol(sympy.Symbol):
         ]
 
     @property
+    def solution(self):
+        known = self.known_values
+        if len(known) > 0:
+            return known
+        return self._reactive_values
+
+    @property
     def _values(self):
         return self._reactive_values
 
@@ -62,7 +69,7 @@ class ReactiveSymbol(sympy.Symbol):
         if self._reactive_values is None:
             return self.name
 
-        return f"{self.name} = {self.known_values}"
+        return f"{self.name} = {self.solution}"
 
 
 def reactive_symbol(names: str) -> list[ReactiveSymbol]:
