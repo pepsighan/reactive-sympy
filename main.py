@@ -4,10 +4,13 @@ from reactive_sympy.reactive import reactive_symbol
 
 x, y = reactive_symbol("x y")
 
-eq = sp.Eq(y, x + 4)
+sp.Eq(y, x + 4)
 
+print(y)
+print(x)
+
+print("------" * 20)
 x.value = 3
 
-print(eq)
 print(y)
 print(x)
