@@ -30,15 +30,18 @@ class ReactiveSymbol(sympy.Symbol):
         v = [v]
         self._add_values(v)
 
+    def _sort_values(self):
+        self._values = sorted(
+            list(set(self._values)),
+            key=lambda x: 0 if is_known_value(x) else len(x.free_symbols),
+        )
+
     def _add_values(self, v: list[any]):
         if len(v) == 0:
             return
 
         self._values.extend([sympy.simplify(it) for it in v])
-        self._values = sorted(
-            list(set(self._values)),
-            key=lambda x: 0 if is_known_value(x) else len(x.free_symbols),
-        )
+        self._sort_values()
 
     def __str__(self):
         return self.name
