@@ -58,7 +58,7 @@ class ReactiveSymbol(sympy.Symbol):
 
             for r in rest:
                 for free in r.free_symbols:
-                    if len(self.known_values) > 0:
+                    if len(free.known_values) > 0:
                         continue
 
                     sols = sympy.solve(eq(r, v), free)
