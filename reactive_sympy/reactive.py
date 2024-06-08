@@ -35,7 +35,7 @@ class ReactiveSymbol(sympy.Symbol):
             return
 
         self._reactive_values.extend(v)
-        self._reactive_values = list(set(self._reactive_values))
+        self._reactive_values = lean_solutions(self._reactive_values)
 
     def __str__(self):
         return self.name
@@ -102,23 +102,26 @@ class ReactiveSympy:
                 else:
                     new_exprs.append(ex)
 
-            s._reactive_values = list(set(new_exprs))
+            s._reactive_values = lean_solutions(new_exprs)
 
-        changed = False
-        for s in self._all_symbols:
-            if len(s.known_values) > 0:
-                continue
 
-            if len(s._reactive_values) <= 1:
-                continue
+def lean_solutions(sols):
+    vars = set([])
+    final_sols = set([])
 
-            for lhs_i in range(len(s._reactive_values)):
-                for rhs_j in range(lhs_i, len(s._reactive_values)):
-                    changed = True
-                    self.eq(s._reactive_values[lhs_i], s._reactive_values[rhs_j])
+    for s in sols:
+        if is_known_value(s):
+            final_sols.add(s)
+            continue
 
-        if changed:
-            self.solve()
+        var_used = ",".join(sorted([s.name for s in s.free_symbols]))
+        if var_used in vars:
+            continue
+
+        vars.add(var_used)
+        final_sols.add(s)
+
+    return list(final_sols)
 
 
 def is_known_value(v: any):
