@@ -87,7 +87,7 @@ class ReactiveSympy:
             solutions = sympy.solve(expr, sym)
             sym._add_values(solutions)
 
-        # print({s.name: s.solutions for s in self._all_symbols}, end="\n\n")
+        print({s.name: s.solutions for s in self._all_symbols}, end="\n\n")
 
     def solve(self):
         while True:
@@ -102,7 +102,7 @@ class ReactiveSympy:
             if len(focused_symb.known_values) > 0:
                 continue
 
-            for ex in focused_symb._values:
+            for expr in focused_symb._values:
                 values = [
                     [
                         value
@@ -110,32 +110,34 @@ class ReactiveSympy:
                         if is_known_value(value)
                         or focused_symb not in value.free_symbols
                     ]
-                    for free_symb in ex.free_symbols
+                    for free_symb in expr.free_symbols
                 ]
-                print(focused_symb, ex)
 
                 value_symbs = [
                     free_symb
-                    for free_symb, val in zip(ex.free_symbols, values)
+                    for free_symb, val in zip(expr.free_symbols, values)
                     if len(val) > 0
                 ]
                 values = [v for v in values if len(v) > 0]
                 values_combo = list(itertools.product(*values))
 
                 for values in values_combo:
-                    sub_ex = copy.deepcopy(ex)
+                    sub_expr = copy.deepcopy(expr)
                     for i, (symb, value) in enumerate(zip(value_symbs, values)):
                         if value_contains_previous_symbols(value, value_symbs[:i]):
                             continue
 
-                        sub_ex = sympy.simplify(sub_ex.subs(symb, value))
+                        sub_expr = sympy.simplify(sub_expr.subs(symb, value))
 
-                    if ex is not sub_ex:
+                    if expr is not sub_expr:
                         ex_distance = min(
-                            [sym.distance_to_solution() for sym in ex.free_symbols]
+                            [sym.distance_to_solution() for sym in expr.free_symbols]
                         )
                         sub_ex_distance = min(
-                            [sym.distance_to_solution() for sym in sub_ex.free_symbols]
+                            [
+                                sym.distance_to_solution()
+                                for sym in sub_expr.free_symbols
+                            ]
                         )
                         # print(
                         #     focused_symb,
@@ -154,7 +156,7 @@ class ReactiveSympy:
                             # print("---" * 20)
                             # print(sub_ex)
                             # print("+++" * 20)
-                            self.eq(focused_symb, sub_ex)
+                            self.eq(focused_symb, sub_expr)
 
             done = all([len(s.known_values) > 0 for s in self._all_symbols])
             if done:
