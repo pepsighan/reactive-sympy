@@ -1,31 +1,22 @@
 from reactive_sympy.reactive import eq, reactive_symbol
 
-x, y = reactive_symbol("x y")
-z, a = reactive_symbol("z a")
-eq(y, x + 4)
+# define the symbols
+x1, x2, y, k, l, ans = reactive_symbol("x1 x2 y k l ans")
 
+# define the parabola equation
+eq(y, k * x1**2 - 2 * k * x1 + l)
+eq(y, k * x2**2 - 2 * k * x2 + l)
+
+# the parabola intersects the line y = 4 at two points A and B
+# so we substitute y = 4 into the parabola equation
+eq(y, 4)
+eq(x1 - x2, 6)
+
+eq(ans, x1**2 + y**2 + x2**2 + y**2)
+
+print(x1)
+print(x2)
 print(y)
-print(x)
-print(z)
-print(a)
-
-print("------" * 20)
-x.value = 3
-
-
-eq(z + y, a + x)
-
-print(y)
-print(x)
-print(z)
-print(a)
-
-
-print("------" * 20)
-a.value = 2
-
-
-print(y)
-print(x)
-print(z)
-print(a)
+print(k)
+print(l)
+print(ans)
