@@ -1,9 +1,10 @@
-import math
+import copy
 import sympy
 
 
 class ReactiveSymbol(sympy.Symbol):
     _values: list[any]
+    _frozen: list[any]
 
     def __new__(cls, name, **assumptions):
         val = super().__new__(cls, name, **assumptions)
@@ -22,15 +23,6 @@ class ReactiveSymbol(sympy.Symbol):
 
         return self._values
 
-    @property
-    def _internal_values(self):
-        return self._values
-
-    @_internal_values.setter
-    def value(self, v: any):
-        v = [v]
-        self._add_values(v)
-
     def _sort_values(self):
         self._values = sorted(
             list(set(self._values)),
@@ -45,7 +37,8 @@ class ReactiveSymbol(sympy.Symbol):
         if len(v) == 0:
             return
 
-        self._values.extend([sympy.simplify(it) for it in v])
+        vals = [sympy.simplify(it) for it in v]
+        self._values.extend(vals)
         self._refresh()
 
     def __str__(self):
@@ -68,11 +61,18 @@ class ReactiveSympy:
             return (symbs,)
 
     def eq(self, lhs: any, rhs: any) -> None:
+        self._internal_eq(lhs, rhs)
+        self.solve()
+
+    def _internal_eq(self, lhs: any, rhs: any) -> None:
         expr = sympy.Eq(lhs, rhs)
         for sym in expr.free_symbols:
             solutions = sympy.solve(expr, sym)
             sym._add_values(solutions)
 
+        self.update_expressions()
+
+    def update_expressions(self, is_base=False):
         for sym in self._all_symbols:
             if len(sym.known_values) > 0:
                 x = sym.known_values[0]
@@ -85,11 +85,13 @@ class ReactiveSympy:
 
                     for i in range(len(oth._values)):
                         if sym in oth._values[i].free_symbols:
-                            oth._values[i] = oth._values[i].subs(sym, x)
+                            sub_val = oth._values[i].subs(sym, x)
+                            if is_base:
+                                oth._values.append(sub_val)
+                            else:
+                                oth._values[i] = sub_val
 
                     oth._refresh()
-
-        # print({sym.name: sym.solutions for sym in self._all_symbols})
 
     def expr_in_terms(self, lhs: any, rhs: any, term: any) -> any:
         expr = sympy.Eq(lhs, rhs)
@@ -98,44 +100,47 @@ class ReactiveSympy:
             return None
         return [sympy.simplify(s) for s in val]
 
+    def clear_unknowns(self):
+        for sym in self._all_symbols:
+            sym.restore_from_frozen()
+        self.update_expressions(is_base=True)
+
+        print({sym.name: sym.solutions for sym in self._all_symbols})
+
     def solve(self):
-        while True:
-            combinations = set([])
-            for sym in self._all_symbols:
-                other_symbols = [s for s in self._all_symbols if s is not sym]
-                oth_values = [
-                    self.expr_in_terms(oth_sym, oth_expr, sym)
-                    for oth_sym in other_symbols
-                    for oth_expr in oth_sym.solutions
-                    if not is_known_value(oth_expr) and sym in oth_expr.free_symbols
-                ]
-                oth_values = [vals for vals in oth_values if vals is not None]
-                oth_values = [v for vals in oth_values for v in vals]
-                sym_values = sym.solutions
+        combinations = set([])
+        for sym in self._all_symbols:
+            other_symbols = [s for s in self._all_symbols if s is not sym]
+            oth_values = [
+                self.expr_in_terms(oth_sym, oth_expr, sym)
+                for oth_sym in other_symbols
+                for oth_expr in oth_sym.solutions
+                if not is_known_value(oth_expr) and sym in oth_expr.free_symbols
+            ]
+            oth_values = [vals for vals in oth_values if vals is not None]
+            oth_values = [v for vals in oth_values for v in vals]
+            sym_values = sym.solutions
 
-                for oth_val in oth_values:
-                    for sym_val in sym_values:
-                        if oth_val != sym_val:
-                            combinations.add((oth_val, sym_val))
+            for oth_val in oth_values:
+                for sym_val in sym_values:
+                    if oth_val != sym_val:
+                        combinations.add((oth_val, sym_val))
 
-            combinations = sorted(
-                combinations,
-                key=lambda x: sympy.count_ops(x[0]) + sympy.count_ops(x[1]),
+        combinations = sorted(
+            combinations,
+            key=lambda x: sympy.count_ops(x[0]) + sympy.count_ops(x[1]),
+        )
+
+        for lhs, rhs in combinations:
+            print(
+                lhs,
+                "=",
+                rhs,
+                ";;",
+                sympy.count_ops(lhs),
+                sympy.count_ops(rhs),
             )
-            for lhs, rhs in combinations:
-                print(
-                    lhs,
-                    "=",
-                    rhs,
-                    ";;",
-                    sympy.count_ops(lhs),
-                    sympy.count_ops(rhs),
-                )
-                self.eq(lhs, rhs)
-
-            all_solved = all([len(s.known_values) > 0 for s in self._all_symbols])
-            if all_solved:
-                break
+            self._internal_eq(lhs, rhs)
 
 
 def is_known_value(v: any):
