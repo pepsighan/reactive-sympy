@@ -41,6 +41,7 @@ class ReactiveSymbol(sympy.Symbol):
             return
 
         self._values.extend([sympy.simplify(it) for it in v])
+        self._values = list(set(self._values))
         self._sort_values()
 
     def __str__(self):
@@ -79,7 +80,7 @@ class ReactiveSympy:
 
     def solve(self):
         while True:
-            combinations = []
+            combinations = set([])
             for sym in self._all_symbols:
                 other_symbols = [s for s in self._all_symbols if s is not sym]
                 oth_values = [
@@ -94,7 +95,8 @@ class ReactiveSympy:
 
                 for oth_val in oth_values:
                     for sym_val in sym_values:
-                        combinations.append((oth_val, sym_val))
+                        if oth_val != sym_val:
+                            combinations.add((oth_val, sym_val))
 
             combinations = sorted(
                 combinations,
