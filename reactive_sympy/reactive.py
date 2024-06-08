@@ -54,13 +54,15 @@ class ReactiveSympy:
         self._all_symbols.extend(symbs)
         return symbs
 
-    def eq(self, lhs: any, rhs: any) -> None:
+    def _internal_eq(self, lhs: any, rhs: any) -> None:
         expr = sympy.Eq(lhs, rhs)
         for sym in expr.free_symbols:
             solutions = sympy.solve(expr, sym)
             solutions = [sympy.simplify(sol) for sol in solutions]
             sym._add_values(solutions)
 
+    def eq(self, lhs: any, rhs: any) -> None:
+        self._internal_eq(lhs, rhs)
         self._react()
 
     def _react(self):
@@ -95,6 +97,24 @@ class ReactiveSympy:
                     new_exprs.append(new_ex)
 
             s._reactive_values = list(set(new_exprs))
+
+        changed = False
+        for s in self._all_symbols:
+            if len(s.known_values) > 0:
+                continue
+
+            if len(s._reactive_values) <= 1:
+                continue
+
+            for lhs_i in range(len(s._reactive_values)):
+                for rhs_j in range(lhs_i, len(s._reactive_values)):
+                    changed = True
+                    self._internal_eq(
+                        s._reactive_values[lhs_i], s._reactive_values[rhs_j]
+                    )
+
+        if changed:
+            self._react()
 
 
 def is_known_value(v: any):
