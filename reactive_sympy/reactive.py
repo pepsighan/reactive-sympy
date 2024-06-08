@@ -55,45 +55,46 @@ class ReactiveSympy:
         return symbs
 
     def eq(self, lhs: any, rhs: any) -> None:
-        expr = sympy.Eq(lhs, rhs, evaluate=False)
+        expr = sympy.Eq(lhs, rhs)
         for sym in expr.free_symbols:
             solutions = sympy.solve(expr, sym)
+            solutions = [sympy.simplify(sol) for sol in solutions]
             sym._add_values(solutions)
-            self._react()
+
+        self._react()
 
     def _react(self):
         for s in self._all_symbols:
             if len(s.known_values) > 0:
                 continue
 
-            exprs = [v for v in s._reactive_values]
+            exprs = s._reactive_values
             new_exprs = []
 
             while len(exprs) > 0:
                 ex = exprs.pop(0)
                 if is_known_value(ex):
+                    new_exprs.append(ex)
                     continue
 
-                unknowns = ex.free_symbols
-                unknowns_values = []
-                for unknown in unknowns:
-                    sols = [
-                        sol
-                        for sol in unknown.solutions
-                        if is_known_value(sol) or s not in sol.free_symbols
-                    ]
-                    unknowns_values.append(sols)
+                symb_values = []
+                for symb in ex.free_symbols:
+                    symb_values.append(
+                        [sol for sol in symb.solutions if s not in sol.free_symbols]
+                    )
 
-                unknown_combinations = list(itertools.product(*unknowns_values))
-                for combination in unknown_combinations:
-                    print(s, combination)
+                symb_value_combinations = list(itertools.product(*symb_values))
+                if len(symb_value_combinations) == 0:
+                    new_exprs.append(ex)
+                    continue
+
+                for combination in symb_value_combinations:
                     new_ex = copy.deepcopy(ex)
-                    for sym, val in zip(unknowns, combination):
+                    for sym, val in zip(ex.free_symbols, combination):
                         new_ex = sympy.simplify(new_ex.subs(sym, val))
-                        # print(s, new_ex)
                     new_exprs.append(new_ex)
 
-        s._reactive_values = new_exprs
+            s._reactive_values = list(set(new_exprs))
 
 
 def is_known_value(v: any):
