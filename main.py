@@ -6,7 +6,7 @@ x, y = reactive_symbol("x y")
 
 eq = sp.Eq(y, x + 4)
 
-x.set_value(3)
+x.value = 3
 
 print(eq)
 print(y)
