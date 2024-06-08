@@ -1,7 +1,4 @@
-import sys
 import sympy
-import itertools
-import copy
 
 
 class ReactiveSymbol(sympy.Symbol):
@@ -87,80 +84,31 @@ class ReactiveSympy:
             solutions = sympy.solve(expr, sym)
             sym._add_values(solutions)
 
-        print({s.name: s.solutions for s in self._all_symbols}, end="\n\n")
+        # print({sym.name: sym.solutions for sym in self._all_symbols})
+
+    def expr_in_terms(self, lhs: any, rhs: any, term: any) -> any:
+        expr = sympy.Eq(lhs, rhs)
+        val = sympy.solve(expr, term)
+        if isinstance(val, bool):
+            return None
+        return [sympy.simplify(s) for s in val]
 
     def solve(self):
-        while True:
-            sorted_symbols = sorted(
-                self._all_symbols,
-                key=lambda x: sys.maxsize  # No need to solve this again.
-                if len(x.solutions) > 0
-                else min(len(x.free_symbols) for x in x._values),
-            )
-            focused_symb = sorted_symbols.pop(0)
+        for sym in self._all_symbols:
+            other_symbols = [s for s in self._all_symbols if s is not sym]
+            oth_values = [
+                self.expr_in_terms(oth_sym, oth_expr, sym)
+                for oth_sym in other_symbols
+                for oth_expr in oth_sym.solutions
+                if not is_known_value(oth_expr) and sym in oth_expr.free_symbols
+            ]
+            oth_values = [vals for vals in oth_values if vals is not None]
+            oth_values = [v for vals in oth_values for v in vals]
 
-            if len(focused_symb.known_values) > 0:
-                continue
-
-            for expr in focused_symb._values:
-                values = [
-                    [
-                        value
-                        for value in free_symb._values
-                        if is_known_value(value)
-                        or focused_symb not in value.free_symbols
-                    ]
-                    for free_symb in expr.free_symbols
-                ]
-
-                value_symbs = [
-                    free_symb
-                    for free_symb, val in zip(expr.free_symbols, values)
-                    if len(val) > 0
-                ]
-                values = [v for v in values if len(v) > 0]
-                values_combo = list(itertools.product(*values))
-
-                for values in values_combo:
-                    sub_expr = copy.deepcopy(expr)
-                    for i, (symb, value) in enumerate(zip(value_symbs, values)):
-                        if value_contains_previous_symbols(value, value_symbs[:i]):
-                            continue
-
-                        sub_expr = sympy.simplify(sub_expr.subs(symb, value))
-
-                    if expr is not sub_expr:
-                        ex_distance = min(
-                            [sym.distance_to_solution() for sym in expr.free_symbols]
-                        )
-                        sub_ex_distance = min(
-                            [
-                                sym.distance_to_solution()
-                                for sym in sub_expr.free_symbols
-                            ]
-                        )
-                        # print(
-                        #     focused_symb,
-                        #     "=>",
-                        #     ex_distance,
-                        #     "=",
-                        #     ex,
-                        #     ",",
-                        #     sub_ex_distance,
-                        #     "=",
-                        #     sub_ex,
-                        # )
-                        if sub_ex_distance < ex_distance:
-                            # print("+++" * 20)
-                            # print(ex)
-                            # print("---" * 20)
-                            # print(sub_ex)
-                            # print("+++" * 20)
-                            self.eq(focused_symb, sub_expr)
-
-            done = all([len(s.known_values) > 0 for s in self._all_symbols])
-            if done:
-                break
+            for oth_val in oth_values:
+                for sym_val in sym.solutions:
+                    print(sym_val, "=", oth_val)
+                    self.eq(sym_val, oth_val)
 
 
 def is_known_value(v: any):
