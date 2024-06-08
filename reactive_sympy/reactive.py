@@ -1,3 +1,4 @@
+import math
 import sympy
 
 
@@ -36,13 +37,16 @@ class ReactiveSymbol(sympy.Symbol):
             key=lambda x: 0 if is_known_value(x) else len(x.free_symbols),
         )
 
+    def _refresh(self):
+        self._values = [v for v in list(set(self._values)) if v != sympy.nan]
+        self._sort_values()
+
     def _add_values(self, v: list[any]):
         if len(v) == 0:
             return
 
         self._values.extend([sympy.simplify(it) for it in v])
-        self._values = list(set(self._values))
-        self._sort_values()
+        self._refresh()
 
     def __str__(self):
         return self.name
@@ -68,6 +72,22 @@ class ReactiveSympy:
         for sym in expr.free_symbols:
             solutions = sympy.solve(expr, sym)
             sym._add_values(solutions)
+
+        for sym in self._all_symbols:
+            if len(sym.known_values) > 0:
+                x = sym.known_values[0]
+                for oth in self._all_symbols:
+                    if sym is oth:
+                        continue
+
+                    if len(oth.known_values) > 0:
+                        continue
+
+                    for i in range(len(oth._values)):
+                        if sym in oth._values[i].free_symbols:
+                            oth._values[i] = oth._values[i].subs(sym, x)
+
+                    oth._refresh()
 
         # print({sym.name: sym.solutions for sym in self._all_symbols})
 
@@ -111,7 +131,7 @@ class ReactiveSympy:
                     sympy.count_ops(lhs),
                     sympy.count_ops(rhs),
                 )
-                self.eq(sym_val, oth_val)
+                self.eq(lhs, rhs)
 
             all_solved = all([len(s.known_values) > 0 for s in self._all_symbols])
             if all_solved:
