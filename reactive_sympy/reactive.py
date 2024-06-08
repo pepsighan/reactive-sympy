@@ -13,11 +13,33 @@ class ReactiveSymbol(sympy.Symbol):
     def value(self):
         return self._reactive_value
 
+    def is_known_value(self):
+        for v in self.value:
+            if not isinstance(v, sympy.Expr):
+                return True
+
+        return False
+
     @value.setter
     def value(self, v: any):
         if not isinstance(v, list):
             v = [v]
         self._reactive_value.extend(v)
+        self._reactive_value = list(set(self._reactive_value))
+        self._react()
+
+    def _react(self):
+        for v in self.value:
+            rest = [o for o in self.value if o is not v and isinstance(o, sympy.Expr)]
+            if len(rest) == 0:
+                continue
+
+            for r in rest:
+                for free in r.free_symbols:
+                    if free.is_known_value():
+                        continue
+
+                    free.value = sympy.solve(eq(r, v), free)
 
     def __str__(self):
         if self._reactive_value is None:
