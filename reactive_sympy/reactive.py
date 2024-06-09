@@ -49,10 +49,6 @@ class ReactiveSympy:
             solutions = sympy.solve(expr, sym)
             sym.add_values(solutions)
 
-            if sym in self._roots and len(solutions) == len(self._roots[sym]):
-                for root, sol in zip(self._roots[sym], solutions):
-                    root.add_values([sol])
-
     def expr_in_terms(self, lhs: any, rhs: any, term: any) -> any:
         expr = sympy.Eq(lhs, rhs)
         val = sympy.solve(expr, term)
@@ -60,8 +56,17 @@ class ReactiveSympy:
             return None
         return [sympy.simplify(s) for s in val]
 
+    def sync_roots(self):
+        for symbol in self._all_symbols:
+            if symbol in self._roots:
+                roots = self._roots[symbol]
+                for vals in symbol._values:
+                    if len(vals) == len(roots):
+                        for root, val in zip(roots, vals):
+                            root.add_values([val])
+
     def solve(self):
-        pass
+        self.sync_roots()
 
 
 def is_known_value(v: any):
