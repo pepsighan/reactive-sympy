@@ -13,18 +13,43 @@ class ReactiveSymbol(sympy.Symbol):
         if len(values) == 0:
             return
 
-        vals = [sympy.simplify(v) for v in values]
         for s_val in self._values:
-            if vals == s_val:
+            if values == s_val:
                 return
 
-        self._values.append(vals)
+        self._values.append(values)
 
     def _is_resolved(self):
         return any([all([is_known_value(v) for v in vals]) for vals in self._values])
 
     def solutions(self):
         return [vals for vals in self._values if all([is_known_value(v) for v in vals])]
+
+
+class ExprHistory:
+    _history_map = dict()
+
+    def record_parent_expr(expr: any, history_expr: list[any]):
+        expr = str(expr)
+        history_expr = [str(h) for h in history_expr]
+        if ExprHistory._history_map.get(expr) is None:
+            ExprHistory._history_map[expr] = []
+
+        vals = ExprHistory._history_map.get(expr)
+        vals.extend(history_expr)
+
+    def is_expr_in_history(expr: any, other: any):
+        expr = str(expr)
+        other = str(other)
+        vals = ExprHistory._history_map.get(expr)
+        if vals is None:
+            return False
+
+        for val in vals:
+            if other == val:
+                return True
+
+        return False
 
 
 class ReactiveSympy:
@@ -52,10 +77,22 @@ class ReactiveSympy:
         self.solve()
 
     def _internal_eq(self, lhs: any, rhs: any) -> None:
+        lhs = sympy.simplify(lhs)
+        rhs = sympy.simplify(rhs)
+        if ExprHistory.is_expr_in_history(lhs, rhs) or ExprHistory.is_expr_in_history(
+            rhs, lhs
+        ):
+            # Either of the expression already uses the other statement. So, no new meaning is to be found.
+            return
+
         expr = sympy.Eq(lhs, rhs)
 
         for sym in expr.free_symbols:
             solutions = sympy.solve(expr, sym)
+            solutions = [sympy.simplify(s) for s in solutions]
+            for sol in solutions:
+                ExprHistory.record_parent_expr(sol, [lhs, rhs])
+
             sym._add_values(solutions)
 
             link = self._symbol_links.get(sym, None)
