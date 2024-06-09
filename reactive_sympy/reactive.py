@@ -10,27 +10,12 @@ class ReactiveSymbol(sympy.Symbol):
         val._values = []
         return val
 
-    @property
-    def known_values(self):
-        return [v for v in self._values if is_known_value(v)]
-
-    @property
-    def solutions(self):
-        known = self.known_values
-        if len(known) > 0:
-            return known
-
-        return self._values
-
     def _add_values(self, v: list[any]):
         if len(v) == 0:
             return
 
         vals = [sympy.simplify(it) for it in v]
         self._values.append(vals)
-
-    def __str__(self):
-        return self.name
 
 
 class ReactiveSympy:
