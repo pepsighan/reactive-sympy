@@ -32,45 +32,6 @@ class ReactiveSymbol(sympy.Symbol):
         return self._values
 
 
-class ExprHistory:
-    _history_map = dict()
-
-    def record_parent_expr(expr: any, history_expr: list[any]):
-        expr = str(expr)
-        history_expr = [str(h) for h in history_expr]
-        if ExprHistory._history_map.get(expr) is None:
-            ExprHistory._history_map[expr] = []
-
-        vals = ExprHistory._history_map.get(expr)
-        vals.extend(history_expr)
-
-    def linked_expr(expr: str, acc: set[str]):
-        vals = ExprHistory._history_map.get(expr)
-        if vals is None:
-            return
-
-        new_acc = set([])
-        for val in vals:
-            if val not in acc:
-                acc.add(val)
-                new_acc.add(val)
-
-        for v in new_acc:
-            ExprHistory.linked_expr(v, acc)
-
-    def is_expr_in_history(expr: any, other: any):
-        expr = str(expr)
-        other = str(other)
-        vals = set([])
-        ExprHistory.linked_expr(expr, vals)
-
-        for val in vals:
-            if other == val:
-                return True
-
-        return False
-
-
 class ReactiveSympy:
     _all_symbols: set[ReactiveSymbol]
     _symbol_links: dict[ReactiveSymbol, list[ReactiveSymbol]]
@@ -95,15 +56,6 @@ class ReactiveSympy:
         self._internal_eq(lhs, rhs)
 
     def _internal_eq(self, lhs: any, rhs: any) -> None:
-        lhs = sympy.simplify(lhs)
-        rhs = sympy.simplify(rhs)
-        if ExprHistory.is_expr_in_history(lhs, rhs) or ExprHistory.is_expr_in_history(
-            rhs, lhs
-        ):
-            print("ignored")
-            # Either of the expression already uses the other statement. So, no new meaning is to be found.
-            return
-
         expr = sympy.Eq(lhs, rhs)
 
         for sym in expr.free_symbols:
@@ -115,9 +67,6 @@ class ReactiveSympy:
 
             solutions = sympy.solve(expr, sym)
             solutions = [sympy.simplify(s) for s in solutions]
-            for sol in solutions:
-                ExprHistory.record_parent_expr(sol, [lhs, rhs])
-
             sym._add_values(solutions)
 
             link = self._symbol_links.get(sym, None)
