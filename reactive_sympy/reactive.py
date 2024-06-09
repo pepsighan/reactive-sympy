@@ -23,6 +23,9 @@ class ReactiveSymbol(sympy.Symbol):
     def _is_resolved(self):
         return any([all([is_known_value(v) for v in vals]) for vals in self._values])
 
+    def solutions(self):
+        return [vals for vals in self._values if all([is_known_value(v) for v in vals])]
+
 
 class ReactiveSympy:
     _all_symbols: list[ReactiveSymbol]
@@ -69,7 +72,6 @@ class ReactiveSympy:
     def solve(self):
         print("solving...")
         for symbol in self._all_symbols:
-            print("solving:", symbol)
             for i in range(len(symbol._values)):
                 lhses = symbol._values[i]
                 for lhs in lhses:
