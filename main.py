@@ -20,6 +20,7 @@ sy.eq(x1 - x2, 6)
 sy.eq(ans, x1**2 + y**2 + x2**2 + y**2)
 
 
+print(f"{x.solutions()=}")
 print(f"{x1.solutions()=}")
 print(f"{x2.solutions()=}")
 print(f"{y.solutions()=}")

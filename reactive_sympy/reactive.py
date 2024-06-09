@@ -47,6 +47,7 @@ class ReactiveSympy:
             return (symbs,)
 
     def set_roots(self, symbol: ReactiveSymbol, roots: list[ReactiveSymbol]):
+        assert symbol not in self._roots
         self._roots[symbol] = roots
 
     def eq(self, lhs: any, rhs: any) -> None:
@@ -56,6 +57,9 @@ class ReactiveSympy:
     def _internal_eq(self, lhs: any, rhs: any) -> None:
         expr = sympy.Eq(lhs, rhs)
         for sym in expr.free_symbols:
+            if sym not in self._all_symbols:
+                continue
+
             solutions = sympy.solve(expr, sym)
             sym.add_values(solutions)
 
@@ -67,13 +71,32 @@ class ReactiveSympy:
         return [sympy.simplify(s) for s in val]
 
     def sync_roots(self):
+        root_symbols = set([])
         for symbol in self._all_symbols:
             if symbol in self._roots:
+                root_symbols.add(symbol)
                 roots = self._roots[symbol]
                 for vals in symbol._values:
                     if len(vals) == len(roots):
                         for root, val in zip(roots, vals):
                             root.add_values([val])
+
+        for sym in root_symbols:
+            self._all_symbols.remove(sym)
+
+        for sym in self._all_symbols:
+            remove_vals = []
+            for sym_values in sym._values:
+                for removed_sym in root_symbols:
+                    for sym_val in sym_values:
+                        if is_known_value(sym_val):
+                            continue
+
+                        if removed_sym in sym_val.free_symbols:
+                            remove_vals.append(sym_values)
+
+            for val in remove_vals:
+                sym._values.remove(val)
 
     def solve(self):
         self.sync_roots()
