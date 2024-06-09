@@ -38,12 +38,25 @@ class ExprHistory:
         vals = ExprHistory._history_map.get(expr)
         vals.extend(history_expr)
 
+    def linked_expr(expr: str, acc: set[str]):
+        vals = ExprHistory._history_map.get(expr)
+        if vals is None:
+            return
+
+        new_acc = set([])
+        for val in vals:
+            if val not in acc:
+                acc.add(val)
+                new_acc.add(val)
+
+        for v in new_acc:
+            ExprHistory.linked_expr(v, acc)
+
     def is_expr_in_history(expr: any, other: any):
         expr = str(expr)
         other = str(other)
-        vals = ExprHistory._history_map.get(expr)
-        if vals is None:
-            return False
+        vals = set([])
+        ExprHistory.linked_expr(expr, vals)
 
         for val in vals:
             if other == val:
@@ -82,6 +95,7 @@ class ReactiveSympy:
         if ExprHistory.is_expr_in_history(lhs, rhs) or ExprHistory.is_expr_in_history(
             rhs, lhs
         ):
+            print("ignored")
             # Either of the expression already uses the other statement. So, no new meaning is to be found.
             return
 
