@@ -25,7 +25,6 @@ class ReactiveSymbol(sympy.Symbol):
         self.keep_unique()
 
     def solutions(self):
-        print(self._values)
         return [vals for vals in self._values if all([is_known_value(v) for v in vals])]
 
 
@@ -52,7 +51,7 @@ class ReactiveSympy:
 
     def eq(self, lhs: any, rhs: any) -> None:
         self._internal_eq(lhs, rhs)
-        self.solve()
+        # self.solve()
 
     def _internal_eq(self, lhs: any, rhs: any) -> None:
         expr = sympy.Eq(lhs, rhs)
@@ -98,8 +97,35 @@ class ReactiveSympy:
             for val in remove_vals:
                 sym._values.remove(val)
 
-    def solve(self):
+    def solve(self, answer: ReactiveSymbol):
         self.sync_roots()
+
+        while len(answer.solutions()) == 0:
+            combinations = []
+            for symbol in self._all_symbols:
+                for i in range(len(symbol._values)):
+                    lhses = symbol._values[i]
+                    for j in range(i + 1, len(symbol._values)):
+                        rhses = symbol._values[j]
+                        for lhs in lhses:
+                            for rhs in rhses:
+                                combinations.append((lhs, rhs))
+
+            complexity = sorted(
+                [sympy.Eq(c[0], c[1]).count_ops() for c in combinations]
+            )
+            max_complexity = complexity[:4]
+            combinations = [
+                c
+                for c in combinations
+                if sympy.Eq(c[0], c[1]).count_ops() <= max_complexity[-1]
+            ]
+            for lhs, rhs in combinations:
+                self._internal_eq(lhs, rhs)
+
+
+def symbols_of(expr: any):
+    return expr.free_symbols
 
 
 def is_known_value(v: any):
