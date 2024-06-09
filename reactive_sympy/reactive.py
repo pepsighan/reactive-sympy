@@ -15,14 +15,17 @@ class ReactiveSymbol(sympy.Symbol):
         self._values.append(v)
 
     def solutions(self):
+        print(self._values)
         return [vals for vals in self._values if all([is_known_value(v) for v in vals])]
 
 
 class ReactiveSympy:
     _all_symbols: list[ReactiveSymbol]
+    _roots: dict[ReactiveSymbol, set[ReactiveSymbol]]
 
     def __init__(self) -> None:
         self._all_symbols = []
+        self._roots = {}
 
     def symbols(self, names: str):
         symbs = sympy.symbols(names, cls=ReactiveSymbol)
@@ -33,6 +36,9 @@ class ReactiveSympy:
             self._all_symbols.append(symbs)
             return (symbs,)
 
+    def set_roots(self, symbol: ReactiveSymbol, roots: list[ReactiveSymbol]):
+        self._roots[symbol] = roots
+
     def eq(self, lhs: any, rhs: any) -> None:
         self._internal_eq(lhs, rhs)
         self.solve()
@@ -42,6 +48,10 @@ class ReactiveSympy:
         for sym in expr.free_symbols:
             solutions = sympy.solve(expr, sym)
             sym.add_values(solutions)
+
+            if sym in self._roots and len(solutions) == len(self._roots[sym]):
+                for root, sol in zip(self._roots[sym], solutions):
+                    root.add_values([sol])
 
     def expr_in_terms(self, lhs: any, rhs: any, term: any) -> any:
         expr = sympy.Eq(lhs, rhs)
