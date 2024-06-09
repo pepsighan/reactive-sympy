@@ -9,11 +9,15 @@ class ReactiveSymbol(sympy.Symbol):
         val._values = []
         return val
 
-    def _add_values(self, v: list[any]):
-        if len(v) == 0:
+    def _add_values(self, values: list[any]):
+        if len(values) == 0:
             return
 
-        vals = [sympy.simplify(it) for it in v]
+        vals = [sympy.simplify(v) for v in values]
+        for s_val in self._values:
+            if vals == s_val:
+                return
+
         self._values.append(vals)
 
     def _is_resolved(self):
@@ -22,9 +26,11 @@ class ReactiveSymbol(sympy.Symbol):
 
 class ReactiveSympy:
     _all_symbols: list[ReactiveSymbol]
+    _symbol_links: dict[ReactiveSymbol, list[ReactiveSymbol]]
 
     def __init__(self) -> None:
         self._all_symbols = []
+        self._symbol_links = {}
 
     def symbols(self, names: str):
         symbs = sympy.symbols(names, cls=ReactiveSymbol)
@@ -35,6 +41,9 @@ class ReactiveSympy:
             self._all_symbols.append(symbs)
             return (symbs,)
 
+    def link_symbol(self, symbol: ReactiveSymbol, vars: list[ReactiveSymbol]):
+        self._symbol_links[symbol] = vars
+
     def eq(self, lhs: any, rhs: any) -> None:
         self._internal_eq(lhs, rhs)
         self.solve()
@@ -42,16 +51,20 @@ class ReactiveSympy:
     def _internal_eq(self, lhs: any, rhs: any) -> None:
         expr = sympy.Eq(lhs, rhs)
 
-        syms = expr.free_symbols
-        all_resolved = all([s._is_resolved() for s in syms])
-        if all_resolved:
-            return
-
         for sym in expr.free_symbols:
             solutions = sympy.solve(expr, sym)
             sym._add_values(solutions)
 
-        print({s.name: s._values for s in syms}, end="\n\n")
+            link = self._symbol_links.get(sym, None)
+            if link is not None:
+                if len(link) != len(solutions):
+                    print("no link here")
+
+                if len(link) == len(solutions):
+                    for li, s in zip(link, solutions):
+                        li._add_values([s])
+
+        print({s.name: s._values for s in expr.free_symbols}, end="\n\n")
 
     def solve(self):
         print("solving...")
