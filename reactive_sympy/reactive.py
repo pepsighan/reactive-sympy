@@ -20,10 +20,16 @@ class ReactiveSymbol(sympy.Symbol):
         self._values.append(values)
 
     def _is_resolved(self):
-        return any([all([is_known_value(v) for v in vals]) for vals in self._values])
+        return len(self.solutions()) > 0
 
     def solutions(self):
         return [vals for vals in self._values if all([is_known_value(v) for v in vals])]
+
+    def solutions_or_values(self):
+        sols = self.solutions()
+        if len(sols) > 0:
+            return sols
+        return self._values
 
 
 class ExprHistory:
@@ -66,20 +72,20 @@ class ExprHistory:
 
 
 class ReactiveSympy:
-    _all_symbols: list[ReactiveSymbol]
+    _all_symbols: set[ReactiveSymbol]
     _symbol_links: dict[ReactiveSymbol, list[ReactiveSymbol]]
 
     def __init__(self) -> None:
-        self._all_symbols = []
+        self._all_symbols = set([])
         self._symbol_links = {}
 
     def symbols(self, names: str):
         symbs = sympy.symbols(names, cls=ReactiveSymbol)
         if isinstance(symbs, tuple):
-            self._all_symbols.extend(symbs)
+            self._all_symbols = self._all_symbols.union(symbs)
             return symbs
         else:
-            self._all_symbols.append(symbs)
+            self._all_symbols = self._all_symbols.union([symbs])
             return (symbs,)
 
     def link_symbol(self, symbol: ReactiveSymbol, vars: list[ReactiveSymbol]):
@@ -87,7 +93,6 @@ class ReactiveSympy:
 
     def eq(self, lhs: any, rhs: any) -> None:
         self._internal_eq(lhs, rhs)
-        self.solve()
 
     def _internal_eq(self, lhs: any, rhs: any) -> None:
         lhs = sympy.simplify(lhs)
@@ -102,6 +107,12 @@ class ReactiveSympy:
         expr = sympy.Eq(lhs, rhs)
 
         for sym in expr.free_symbols:
+            if sym not in self._all_symbols:
+                continue
+
+            if sym._is_resolved():
+                continue
+
             solutions = sympy.solve(expr, sym)
             solutions = [sympy.simplify(s) for s in solutions]
             for sol in solutions:
@@ -118,16 +129,14 @@ class ReactiveSympy:
                     for li, s in zip(link, solutions):
                         li._add_values([s])
 
-        print({s.name: s._values for s in expr.free_symbols}, end="\n\n")
+        print({s.name: s._values for s in self._all_symbols}, end="\n\n")
 
     def solve(self):
         print("solving...")
         for symbol in self._all_symbols:
-            for i in range(len(symbol._values)):
-                lhses = symbol._values[i]
+            for lhses in symbol._values:
                 for lhs in lhses:
-                    for j in range(i + 1, len(symbol._values)):
-                        rhses = symbol._values[j]
+                    for rhses in symbol._values:
                         for rhs in rhses:
                             self._internal_eq(lhs, rhs)
 
