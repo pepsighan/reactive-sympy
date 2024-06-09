@@ -9,10 +9,20 @@ class ReactiveSymbol(sympy.Symbol):
         val._values = []
         return val
 
+    def keep_unique(self):
+        vals = []
+        for existing_vals in self._values:
+            found = any([new_vals == existing_vals for new_vals in vals])
+            if found:
+                continue
+            vals.append(existing_vals)
+        self._values = vals
+
     def add_values(self, v: list[any]):
         if len(v) == 0:
             return
         self._values.append(v)
+        self.keep_unique()
 
     def solutions(self):
         print(self._values)
