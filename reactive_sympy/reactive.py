@@ -54,9 +54,6 @@ class ReactiveSympy:
         self._roots[symbol] = roots
 
     def eq(self, lhs: any, rhs: any) -> None:
-        self._internal_eq(lhs, rhs)
-
-    def _internal_eq(self, lhs: any, rhs: any) -> None:
         expr = sympy.Eq(lhs, rhs)
         for sym in expr.free_symbols:
             if sym not in self._all_symbols:
@@ -127,7 +124,7 @@ class ReactiveSympy:
                 for j in range(i + 1, len(single_vals)):
                     lhs = single_vals[i][0]
                     rhs = single_vals[j][0]
-                    self._internal_eq(lhs, rhs)
+                    self.eq(lhs, rhs)
 
         self.replace_found_value_in_expr()
 
