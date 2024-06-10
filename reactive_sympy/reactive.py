@@ -82,16 +82,22 @@ class ReactiveSympy:
                     for root, val in zip(roots, vals):
                         root.add_values([val])
 
-    def solve(self, answer: ReactiveSymbol):
-        to_solve_symbols = []
-        for ans_vals in answer._values:
-            ans_symbols = set([])
-            for ans in ans_vals:
-                symbols = [sym for sym in ans.free_symbols if len(sym.solutions()) == 0]
-                ans_symbols = ans_symbols.union(symbols)
-            to_solve_symbols.append(ans_symbols)
+    def solve(self, answer: ReactiveSymbol, unknowns: set[ReactiveSymbol] = set()):
+        unknowns = unknowns.union([answer])
 
-        print(to_solve_symbols)
+        unknown_symbols = set([])
+        for ans_vals in answer._values:
+            for ans in ans_vals:
+                symbols = [
+                    sym
+                    for sym in ans.free_symbols
+                    if len(sym.solutions()) == 0 and sym not in unknowns
+                ]
+                unknown_symbols = unknown_symbols.union(symbols)
+
+        unknowns = unknowns.union(unknown_symbols)
+        for symbol in unknown_symbols:
+            self.solve(symbol, unknowns)
 
 
 def symbols_of(expr: any):
