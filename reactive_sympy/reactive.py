@@ -112,18 +112,24 @@ class ReactiveSympy:
             for values in symbol._values:
                 for i in range(len(values)):
                     for v_sym, v_value in found_values.items():
-                        values[i] = values[i].subs(v_sym, v_value[0])
+                        ans = sympy.simplify(values[i].subs(v_sym, v_value[0]))
+                        if ans == sympy.nan:
+                            continue
 
-    def solve(self, answer_symbol: ReactiveSymbol):
+                        values[i] = ans
+
+    def solve(self):
         self.replace_found_value_in_expr()
 
-        unknown_symbols = set([])
-        for ans_vals in answer_symbol._values:
-            for ans in ans_vals:
-                symbols = [sym for sym in ans.free_symbols if len(sym.solutions()) == 0]
-                unknown_symbols = unknown_symbols.union(symbols)
+        for symbol in self._all_symbols:
+            single_vals = [vals for vals in symbol._values if len(vals) == 1]
+            for i in range(len(single_vals)):
+                for j in range(i + 1, len(single_vals)):
+                    lhs = single_vals[i][0]
+                    rhs = single_vals[j][0]
+                    self._internal_eq(lhs, rhs)
 
-        print(unknown_symbols)
+        self.replace_found_value_in_expr()
 
 
 def symbols_of(expr: any):
