@@ -70,23 +70,42 @@ class ReactiveSympy:
             return None
 
         term.add_values(solutions)
-        self.sync_roots(term)
+        self.sync_roots()
 
-    def sync_roots(self, symbol: ReactiveSymbol):
-        root_symbols = set([])
-        if symbol in self._roots:
-            root_symbols.add(symbol)
-            roots = self._roots[symbol]
-            for vals in symbol._values:
-                if len(vals) == len(roots):
-                    for root, val in zip(roots, vals):
-                        root.add_values([val])
+    def sync_roots(self):
+        for symbol in self._all_symbols:
+            if symbol in self._roots:
+                roots = self._roots[symbol]
+                for vals in symbol._values:
+                    if len(vals) == len(roots):
+                        for root, val in zip(roots, vals):
+                            root.add_values([val])
 
-    def solve(self, answer: ReactiveSymbol, unknowns: set[ReactiveSymbol] = set()):
-        unknowns = unknowns.union([answer])
+                        for oth_sym in self._all_symbols:
+                            if oth_sym is symbol:
+                                continue
+
+                            for root in roots:
+                                for oth_vals in oth_sym._values:
+                                    oth_val_replacements = []
+                                    for oth_val in oth_vals:
+                                        if symbol in symbols_of(oth_val):
+                                            oth_val_replacements.append(
+                                                oth_val.subs(symbol, root)
+                                            )
+
+                                    if len(oth_val_replacements) > 0:
+                                        oth_sym.add_values(oth_val_replacements)
+
+    def solve(
+        self,
+        answer_symbol: ReactiveSymbol,
+        unknowns: set[ReactiveSymbol] = set(),
+    ):
+        unknowns = unknowns.union([answer_symbol])
 
         unknown_symbols = set([])
-        for ans_vals in answer._values:
+        for ans_vals in answer_symbol._values:
             for ans in ans_vals:
                 symbols = [
                     sym
@@ -96,11 +115,15 @@ class ReactiveSympy:
                 unknown_symbols = unknown_symbols.union(symbols)
 
         unknowns = unknowns.union(unknown_symbols)
+        print(unknown_symbols)
         for symbol in unknown_symbols:
             self.solve(symbol, unknowns)
 
 
 def symbols_of(expr: any):
+    if is_known_value(expr):
+        return {}
+
     return expr.free_symbols
 
 
