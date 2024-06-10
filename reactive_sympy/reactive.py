@@ -25,7 +25,11 @@ class ReactiveSymbol(sympy.Symbol):
         self.keep_unique()
 
     def solutions(self):
-        return [vals for vals in self._values if all([is_known_value(v) for v in vals])]
+        return [
+            vals
+            for vals in self._values
+            if all([is_known_value(v) for v in vals]) and len(vals) == 1
+        ]
 
 
 class ReactiveSympy:
@@ -97,27 +101,29 @@ class ReactiveSympy:
                                     if len(oth_val_replacements) > 0:
                                         oth_sym.add_values(oth_val_replacements)
 
-    def solve(
-        self,
-        answer_symbol: ReactiveSymbol,
-        unknowns: set[ReactiveSymbol] = set(),
-    ):
-        unknowns = unknowns.union([answer_symbol])
+    def replace_found_value_in_expr(self):
+        found_values = {
+            symbol: symbol.solutions()[0]
+            for symbol in self._all_symbols
+            if len(symbol.solutions()) > 0
+        }
+
+        for symbol in self._all_symbols:
+            for values in symbol._values:
+                for i in range(len(values)):
+                    for v_sym, v_value in found_values.items():
+                        values[i] = values[i].subs(v_sym, v_value[0])
+
+    def solve(self, answer_symbol: ReactiveSymbol):
+        self.replace_found_value_in_expr()
 
         unknown_symbols = set([])
         for ans_vals in answer_symbol._values:
             for ans in ans_vals:
-                symbols = [
-                    sym
-                    for sym in ans.free_symbols
-                    if len(sym.solutions()) == 0 and sym not in unknowns
-                ]
+                symbols = [sym for sym in ans.free_symbols if len(sym.solutions()) == 0]
                 unknown_symbols = unknown_symbols.union(symbols)
 
-        unknowns = unknowns.union(unknown_symbols)
         print(unknown_symbols)
-        for symbol in unknown_symbols:
-            self.solve(symbol, unknowns)
 
 
 def symbols_of(expr: any):
