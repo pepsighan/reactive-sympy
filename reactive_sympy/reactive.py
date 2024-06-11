@@ -47,19 +47,20 @@ class ReactiveSympy:
             return symbs
         else:
             self._all_symbols.append(symbs)
-            return (symbs,)
+            return symbs
 
     def set_roots(self, symbol: ReactiveSymbol, roots: list[ReactiveSymbol]):
         assert symbol not in self._roots
         self._roots[symbol] = roots
 
-    def eq(self, lhs: any, rhs: any) -> None:
+    def eq(self, lhs: any, rhs: any) -> sympy.Eq:
         expr = sympy.Eq(lhs, rhs)
         for sym in expr.free_symbols:
             if sym not in self._all_symbols:
                 continue
 
             self.solve_expr_in_term_of(expr, sym)
+        return expr
 
     def solve_expr_in_term_of(
         self,
