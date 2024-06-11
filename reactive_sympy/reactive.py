@@ -62,6 +62,20 @@ class ReactiveSympy:
             self.solve_expr_in_term_of(expr, sym)
         return expr
 
+    def solve(self, *args, **kwargs):
+        results = sympy.solve(*args, **kwargs, dict=True)
+        contiguous_results = {}
+        for result in results:
+            for sym, val in result.items():
+                if sym not in contiguous_results:
+                    contiguous_results[sym] = []
+                contiguous_results[sym].append(val)
+
+        for sym, val in contiguous_results.items():
+            sym.add_values(val)
+
+        return sympy.solve(*args, **kwargs)
+
     def solve_expr_in_term_of(
         self,
         expr: sympy.Expr,
@@ -116,7 +130,7 @@ class ReactiveSympy:
 
                         values[i] = ans
 
-    def solve(self):
+    def finalize(self):
         self.replace_found_value_in_expr()
 
         for symbol in self._all_symbols:
