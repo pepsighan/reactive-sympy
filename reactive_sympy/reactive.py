@@ -63,7 +63,7 @@ class ReactiveSympy:
         return expr
 
     def solve(self, *args, **kwargs):
-        dict_is = kwargs.pop("dict", True)
+        dict_is = kwargs.pop("dict", False)
         results = sympy.solve(*args, **kwargs, dict=True)
         contiguous_results = {}
         for result in results:
