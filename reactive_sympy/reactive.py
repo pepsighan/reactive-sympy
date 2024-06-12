@@ -63,8 +63,10 @@ class ReactiveSympy:
         return expr
 
     def solve(self, *args, **kwargs):
-        dict_is = kwargs.pop("dict", False)
-        results = sympy.solve(*args, **kwargs, dict=True)
+        akwargs = kwargs.copy()
+        akwargs["dict"] = True
+
+        results = sympy.solve(*args, **akwargs)
         contiguous_results = {}
         for result in results:
             for sym, val in result.items():
@@ -75,7 +77,7 @@ class ReactiveSympy:
         for sym, val in contiguous_results.items():
             sym.add_values(val)
 
-        return sympy.solve(*args, **kwargs, dict=dict_is)
+        return sympy.solve(*args, **kwargs)
 
     def solve_expr_in_term_of(
         self,
