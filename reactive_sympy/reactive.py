@@ -67,16 +67,10 @@ class ReactiveSympy:
         return expr
 
     def solve(self, *args, **kwargs):
-        akwargs = kwargs.copy()
-        akwargs["dict"] = True
+        if len(args) > 0:
+            self.eq(args[0], 0)
 
-        results = sympy.solve(*args, **akwargs)
-        contiguous_results = {}
-        for result in results:
-            for sym, val in result.items():
-                if sym not in contiguous_results:
-                    contiguous_results[sym] = []
-                contiguous_results[sym].append(val)
+        return sympy.solve(*args, **kwargs)
 
         for sym, val in contiguous_results.items():
             sym.add_values(val)
