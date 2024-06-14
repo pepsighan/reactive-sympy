@@ -34,11 +34,14 @@ class ReactiveSymbol(sympy.Symbol):
 
 class ReactiveSympy:
     _all_symbols: list[ReactiveSymbol]
-    _roots: dict[ReactiveSymbol, set[ReactiveSymbol]]
+
+    _original_eqs: list[sympy.Eq] = []
 
     def __init__(self) -> None:
         self._all_symbols = []
-        self._roots = {}
+
+    def answer_symbol(self):
+        return self.symbols("answer")
 
     def symbols(self, names: str, real: bool | None = None, **kwargs):
         symbs = sympy.symbols(
@@ -53,10 +56,6 @@ class ReactiveSympy:
         else:
             self._all_symbols.append(symbs)
             return symbs
-
-    def set_roots(self, symbol: ReactiveSymbol, roots: list[ReactiveSymbol]):
-        assert symbol not in self._roots
-        self._roots[symbol] = roots
 
     def eq(self, lhs: any, rhs: any) -> sympy.Eq:
         expr = sympy.Eq(lhs, rhs)
@@ -94,32 +93,6 @@ class ReactiveSympy:
             return None
 
         term.add_values(solutions)
-        self.sync_roots()
-
-    def sync_roots(self):
-        for symbol in self._all_symbols:
-            if symbol in self._roots:
-                roots = self._roots[symbol]
-                for vals in symbol.values:
-                    if len(vals) == len(roots):
-                        for root, val in zip(roots, vals):
-                            root.add_values([val])
-
-                        for oth_sym in self._all_symbols:
-                            if oth_sym is symbol:
-                                continue
-
-                            for root in roots:
-                                for oth_vals in oth_sym.values:
-                                    oth_val_replacements = []
-                                    for oth_val in oth_vals:
-                                        if symbol in symbols_of(oth_val):
-                                            oth_val_replacements.append(
-                                                oth_val.subs(symbol, root)
-                                            )
-
-                                    if len(oth_val_replacements) > 0:
-                                        oth_sym.add_values(oth_val_replacements)
 
     def replace_found_value_in_expr(self):
         found_values = {
