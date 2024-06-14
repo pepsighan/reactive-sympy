@@ -85,9 +85,8 @@ class ReactiveSympy:
             if sym not in self._all_symbols:
                 continue
 
-            resolved_all_symbols = resolved_all_symbols and self.solve_expr_in_term_of(
-                eq, sym
-            )
+            resolved = self.solve_expr_in_term_of(eq, sym)
+            resolved_all_symbols = resolved and resolved_all_symbols
 
         return resolved_all_symbols
 
