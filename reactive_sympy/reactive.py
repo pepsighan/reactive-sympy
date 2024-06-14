@@ -106,22 +106,25 @@ class ReactiveSympy:
         return True
 
     def finalize(self):
-        for eq in self._original_eqs:
-            self.solve_free_symbols(eq)
+        # for eq in self._original_eqs:
+        #     self.solve_free_symbols(eq)
 
         ans_symbol = self.answer_symbol()
 
         for eq in self._original_eqs:
-            for symbol in reversed(self._symbol_appearance_order):
-                if symbol is ans_symbol:
-                    continue
-
+            for symbol in self._all_symbols:
                 eq_syms = sympy.solve(eq, symbol)
                 if len(eq_syms) == 0:
                     continue
+                for an_eq in self._original_eqs:
+                    if eq is an_eq:
+                        continue
 
-                for lhses in symbol.values:
-                    for lhs in lhses:
+                    an_eq_syms = sympy.solve(an_eq, symbol)
+                    if len(an_eq_syms) == 0:
+                        continue
+
+                    for lhs in an_eq_syms:
                         for eq_sym in eq_syms:
                             self.solve_free_symbols(sympy.Eq(lhs, eq_sym))
 
