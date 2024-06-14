@@ -16,8 +16,6 @@ class ReactiveSymbol(sympy.Symbol):
             if found:
                 continue
             vals.append(existing_vals)
-        print(self.name, self.values, vals)
-
         self.values = vals
 
     def add_values(self, v: list[any]):
@@ -80,6 +78,8 @@ class ReactiveSympy:
     def solve_free_symbols(self, eq: any):
         ans = self.answer_symbol()
         has_ans_sym = ans in eq.free_symbols
+
+        resolved_all_symbols = True
         for sym in eq.free_symbols:
             if has_ans_sym and sym != ans:
                 # For a equation with answer symbol, do not solve for other symbols.
@@ -88,8 +88,11 @@ class ReactiveSympy:
             if sym not in self._all_symbols:
                 continue
 
-            self.solve_expr_in_term_of(eq, sym)
-        return eq
+            resolved_all_symbols = resolved_all_symbols and self.solve_expr_in_term_of(
+                eq, sym
+            )
+
+        return resolved_all_symbols
 
     def solve_expr_in_term_of(
         self,
@@ -98,9 +101,13 @@ class ReactiveSympy:
     ):
         solutions = sympy.solve(expr, term)
         if solutions == sympy.true or solutions == sympy.false:
-            return None
+            return False
+
+        if len(solutions) == 0:
+            return False
 
         term.add_values(solutions)
+        return True
 
     def finalize(self):
         for eq in self._original_eqs:
@@ -124,6 +131,26 @@ class ReactiveSympy:
                             continue
 
                         self.solve_free_symbols(solve_eq)
+
+        ans_symbol = self.answer_symbol()
+        answer_eq = [
+            eq
+            for eq in self._original_eqs
+            if eq.lhs is ans_symbol or eq.rhs is ans_symbol
+        ]
+        if len(answer_eq) == 0:
+            return
+        answer_eq = answer_eq[0]
+
+        legit_answers = []
+        for answers in self.answer_symbol().solutions():
+            for ans in answers:
+                new_eq = answer_eq.subs(ans_symbol, ans)
+                resolved_all_var = self.solve_free_symbols(new_eq)
+                if resolved_all_var:
+                    legit_answers.append(ans)
+
+        return legit_answers
 
 
 def symbols_of(expr: any):
