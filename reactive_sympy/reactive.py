@@ -137,6 +137,7 @@ class ReactiveSympy:
                             continue
 
                         values[i] = ans
+            symbol.keep_unique()
 
     def finalize(self):
         self.replace_found_value_in_expr()
