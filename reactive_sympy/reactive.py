@@ -40,14 +40,12 @@ class ReactiveSympy:
         self._all_symbols = []
         self._roots = {}
 
-    def symbols(
-        self, names: str, positive: bool | None = None, real: bool | None = None
-    ):
+    def symbols(self, names: str, real: bool | None = None, **kwargs):
         symbs = sympy.symbols(
             names,
             cls=ReactiveSymbol,
-            positive=positive,
             real=True if real is None else real,
+            **kwargs,
         )
         if isinstance(symbs, tuple):
             self._all_symbols.extend(symbs)
