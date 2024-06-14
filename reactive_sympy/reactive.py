@@ -2,32 +2,32 @@ import sympy
 
 
 class ReactiveSymbol(sympy.Symbol):
-    _values: list[any]
+    values: list[any]
 
     def __new__(cls, name, **assumptions):
         val = super().__new__(cls, name, **assumptions)
-        val._values = []
+        val.values = []
         return val
 
     def keep_unique(self):
         vals = []
-        for existing_vals in self._values:
+        for existing_vals in self.values:
             found = any([new_vals == existing_vals for new_vals in vals])
             if found:
                 continue
             vals.append(existing_vals)
-        self._values = vals
+        self.values = vals
 
     def add_values(self, v: list[any]):
         if len(v) == 0:
             return
-        self._values.append(v)
+        self.values.append(v)
         self.keep_unique()
 
     def solutions(self):
         return [
             vals
-            for vals in self._values
+            for vals in self.values
             if all([is_known_value(v) for v in vals]) and len(vals) == 1
         ]
 
@@ -100,7 +100,7 @@ class ReactiveSympy:
         for symbol in self._all_symbols:
             if symbol in self._roots:
                 roots = self._roots[symbol]
-                for vals in symbol._values:
+                for vals in symbol.values:
                     if len(vals) == len(roots):
                         for root, val in zip(roots, vals):
                             root.add_values([val])
@@ -110,7 +110,7 @@ class ReactiveSympy:
                                 continue
 
                             for root in roots:
-                                for oth_vals in oth_sym._values:
+                                for oth_vals in oth_sym.values:
                                     oth_val_replacements = []
                                     for oth_val in oth_vals:
                                         if symbol in symbols_of(oth_val):
@@ -129,7 +129,7 @@ class ReactiveSympy:
         }
 
         for symbol in self._all_symbols:
-            for values in symbol._values:
+            for values in symbol.values:
                 for i in range(len(values)):
                     for v_sym, v_value in found_values.items():
                         ans = sympy.simplify(values[i].subs(v_sym, v_value[0]))
@@ -142,7 +142,7 @@ class ReactiveSympy:
         self.replace_found_value_in_expr()
 
         for symbol in self._all_symbols:
-            single_vals = [vals for vals in symbol._values if len(vals) == 1]
+            single_vals = [vals for vals in symbol.values if len(vals) == 1]
             for i in range(len(single_vals)):
                 for j in range(i + 1, len(single_vals)):
                     lhs = single_vals[i][0]
