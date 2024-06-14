@@ -25,20 +25,19 @@ class ReactiveSymbol(sympy.Symbol):
         self.keep_unique()
 
     def solutions(self):
-        return [
-            vals
-            for vals in self.values
-            if all([is_known_value(v) for v in vals]) and len(vals) == 1
-        ]
+        return [vals for vals in self.values if all([is_known_value(v) for v in vals])]
 
 
 class ReactiveSympy:
     _all_symbols: list[ReactiveSymbol]
+    _symbol_appearance_order: list[ReactiveSymbol]
 
-    _original_eqs: list[sympy.Eq] = []
+    _original_eqs: list[sympy.Eq]
 
     def __init__(self) -> None:
         self._all_symbols = []
+        self._symbol_appearance_order = []
+        self._original_eqs = []
 
     def answer_symbol(self):
         sym_name = "answer"
@@ -65,6 +64,11 @@ class ReactiveSympy:
 
     def eq(self, lhs: any, rhs: any) -> sympy.Eq:
         expr = sympy.Eq(lhs, rhs)
+
+        for sym in expr.free_symbols:
+            if sym not in self._symbol_appearance_order:
+                self._symbol_appearance_order.extend(expr.free_symbols)
+
         self._original_eqs.append(expr)
         return expr
 
@@ -76,15 +80,8 @@ class ReactiveSympy:
         return sympy.solve(*args, **kwargs)
 
     def solve_free_symbols(self, eq: any):
-        ans = self.answer_symbol()
-        has_ans_sym = ans in eq.free_symbols
-
         resolved_all_symbols = True
         for sym in eq.free_symbols:
-            if has_ans_sym and sym != ans:
-                # For a equation with answer symbol, do not solve for other symbols.
-                continue
-
             if sym not in self._all_symbols:
                 continue
 
@@ -116,7 +113,7 @@ class ReactiveSympy:
         ans_symbol = self.answer_symbol()
 
         for eq in self._original_eqs:
-            for symbol in self._all_symbols:
+            for symbol in reversed(self._symbol_appearance_order):
                 if symbol is ans_symbol:
                     continue
 
@@ -127,30 +124,9 @@ class ReactiveSympy:
                 for lhses in symbol.values:
                     for lhs in lhses:
                         for eq_sym in eq_syms:
-                            solve_eq = sympy.Eq(lhs, eq_sym)
-                            if solve_eq == sympy.true or solve_eq == sympy.false:
-                                continue
+                            self.solve_free_symbols(sympy.Eq(lhs, eq_sym))
 
-                            self.solve_free_symbols(solve_eq)
-
-        answer_eq = [
-            eq
-            for eq in self._original_eqs
-            if eq.lhs is ans_symbol or eq.rhs is ans_symbol
-        ]
-        if len(answer_eq) == 0:
-            return
-        answer_eq = answer_eq[0]
-
-        legit_answers = []
-        for answers in self.answer_symbol().solutions():
-            for ans in answers:
-                new_eq = answer_eq.subs(ans_symbol, ans)
-                resolved_all_var = self.solve_free_symbols(new_eq)
-                if resolved_all_var:
-                    legit_answers.append(ans)
-
-        return legit_answers
+        return ans_symbol.solutions()
 
 
 def symbols_of(expr: any):
