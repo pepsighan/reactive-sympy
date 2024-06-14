@@ -113,26 +113,26 @@ class ReactiveSympy:
         for eq in self._original_eqs:
             self.solve_free_symbols(eq)
 
-        for symbol in self._all_symbols:
-            single_vals = [vals for vals in symbol.values if len(vals) == 1]
-            for i in range(len(single_vals)):
-                lhs = single_vals[i][0]
-                for eq in self._original_eqs:
-                    if symbol not in eq.free_symbols:
-                        continue
-
-                    eq_syms = sympy.solve(eq, symbol)
-                    if len(eq_syms) == 0:
-                        continue
-
-                    for eq_sym in eq_syms:
-                        solve_eq = sympy.Eq(lhs, eq_sym)
-                        if solve_eq == sympy.true or solve_eq == sympy.false:
-                            continue
-
-                        self.solve_free_symbols(solve_eq)
-
         ans_symbol = self.answer_symbol()
+
+        for eq in self._original_eqs:
+            for symbol in self._all_symbols:
+                if symbol is ans_symbol:
+                    continue
+
+                eq_syms = sympy.solve(eq, symbol)
+                if len(eq_syms) == 0:
+                    continue
+
+                for lhses in symbol.values:
+                    for lhs in lhses:
+                        for eq_sym in eq_syms:
+                            solve_eq = sympy.Eq(lhs, eq_sym)
+                            if solve_eq == sympy.true or solve_eq == sympy.false:
+                                continue
+
+                            self.solve_free_symbols(solve_eq)
+
         answer_eq = [
             eq
             for eq in self._original_eqs
