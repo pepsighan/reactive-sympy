@@ -67,7 +67,8 @@ class ReactiveSympy:
         return expr
 
     def solve(self, *args, **kwargs):
-        if len(args) > 0:
+        # Solve expressions are eq expressions (if they are not already in which case the following case is False).
+        if len(args) > 0 and sympy.Eq(args[0], 0):
             self.eq(args[0], 0)
 
         return sympy.solve(*args, **kwargs)
