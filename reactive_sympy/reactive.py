@@ -16,6 +16,8 @@ class ReactiveSymbol(sympy.Symbol):
             if found:
                 continue
             vals.append(existing_vals)
+        print(self.name, self.values, vals)
+
         self.values = vals
 
     def add_values(self, v: list[any]):
@@ -41,7 +43,13 @@ class ReactiveSympy:
         self._all_symbols = []
 
     def answer_symbol(self):
-        return self.symbols("answer")
+        sym_name = "answer"
+
+        existing_sym_names = [sym.name for sym in self._all_symbols]
+        if sym_name in existing_sym_names:
+            return self._all_symbols[existing_sym_names.index(sym_name)]
+
+        return self.symbols(sym_name)
 
     def symbols(self, names: str, real: bool | None = None, **kwargs):
         symbs = sympy.symbols(
@@ -59,11 +67,7 @@ class ReactiveSympy:
 
     def eq(self, lhs: any, rhs: any) -> sympy.Eq:
         expr = sympy.Eq(lhs, rhs)
-        for sym in expr.free_symbols:
-            if sym not in self._all_symbols:
-                continue
-
-            self.solve_expr_in_term_of(expr, sym)
+        self._original_eqs.append(expr)
         return expr
 
     def solve(self, *args, **kwargs):
@@ -73,10 +77,19 @@ class ReactiveSympy:
 
         return sympy.solve(*args, **kwargs)
 
-        for sym, val in contiguous_results.items():
-            sym.add_values(val)
+    def solve_free_symbols(self, eq: any):
+        ans = self.answer_symbol()
+        has_ans_sym = ans in eq.free_symbols
+        for sym in eq.free_symbols:
+            if has_ans_sym and sym != ans:
+                # For a equation with answer symbol, do not solve for other symbols.
+                continue
 
-        return sympy.solve(*args, **kwargs)
+            if sym not in self._all_symbols:
+                continue
+
+            self.solve_expr_in_term_of(eq, sym)
+        return eq
 
     def solve_expr_in_term_of(
         self,
@@ -84,41 +97,33 @@ class ReactiveSympy:
         term: ReactiveSymbol,
     ):
         solutions = sympy.solve(expr, term)
-        if isinstance(solutions, bool):
+        if solutions == sympy.true or solutions == sympy.false:
             return None
 
         term.add_values(solutions)
 
-    def replace_found_value_in_expr(self):
-        found_values = {
-            symbol: symbol.solutions()[0]
-            for symbol in self._all_symbols
-            if len(symbol.solutions()) > 0
-        }
-
-        for symbol in self._all_symbols:
-            for values in symbol.values:
-                for i in range(len(values)):
-                    for v_sym, v_value in found_values.items():
-                        ans = sympy.simplify(values[i].subs(v_sym, v_value[0]))
-                        if ans == sympy.nan:
-                            continue
-
-                        values[i] = ans
-            symbol.keep_unique()
-
     def finalize(self):
-        self.replace_found_value_in_expr()
+        for eq in self._original_eqs:
+            self.solve_free_symbols(eq)
 
         for symbol in self._all_symbols:
             single_vals = [vals for vals in symbol.values if len(vals) == 1]
             for i in range(len(single_vals)):
-                for j in range(i + 1, len(single_vals)):
-                    lhs = single_vals[i][0]
-                    rhs = single_vals[j][0]
-                    self.eq(lhs, rhs)
+                lhs = single_vals[i][0]
+                for eq in self._original_eqs:
+                    if symbol not in eq.free_symbols:
+                        continue
 
-        self.replace_found_value_in_expr()
+                    eq_syms = sympy.solve(eq, symbol)
+                    if len(eq_syms) == 0:
+                        continue
+
+                    for eq_sym in eq_syms:
+                        solve_eq = sympy.Eq(lhs, eq_sym)
+                        if solve_eq == sympy.true or solve_eq == sympy.false:
+                            continue
+
+                        self.solve_free_symbols(solve_eq)
 
 
 def symbols_of(expr: any):
