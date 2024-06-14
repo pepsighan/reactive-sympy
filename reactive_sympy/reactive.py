@@ -72,6 +72,10 @@ class ReactiveSympy:
         self._original_eqs.append(expr)
         return expr
 
+    def subs_eq(self, lhs: any, rhs: any) -> tuple[any, any]:
+        self.eq(lhs, rhs)
+        return 1, 1
+
     def solve(self, *args, **kwargs):
         # Solve expressions are eq expressions (if they are not already in which case the following case is False).
         if len(args) > 0 and sympy.Eq(args[0], 0):
