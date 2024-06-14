@@ -126,7 +126,12 @@ class ReactiveSympy:
                         for eq_sym in eq_syms:
                             self.solve_free_symbols(sympy.Eq(lhs, eq_sym))
 
-        return ans_symbol.solutions()
+        sols = ans_symbol.solutions()
+        sols = [sol for sol in sols if len(sol) == 1]
+        if len(sols) == 0:
+            return None
+
+        return sols[0][0]
 
 
 def symbols_of(expr: any):
