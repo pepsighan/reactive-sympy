@@ -72,6 +72,16 @@ class ReactiveSympy:
         self._original_eqs.append(expr)
         return expr
 
+    def final_eq(self, lhs: any, rhs: any) -> sympy.Eq:
+        if isinstance(rhs, sympy.Eq):
+            if rhs.lhs in self._all_symbols:
+                return self.eq(lhs, rhs.rhs)
+
+            if rhs.rhs in self._all_symbols:
+                return self.eq(lhs, rhs.lhs)
+
+        return self.eq(lhs, rhs)
+
     def subs_eq(self, lhs: any, rhs: any) -> tuple[any, any]:
         self.eq(lhs, rhs)
         return 1, 1
