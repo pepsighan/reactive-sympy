@@ -82,9 +82,17 @@ class ReactiveSympy:
 
         return self.eq(lhs, rhs)
 
-    def subs_eq(self, lhs: any, rhs: any) -> tuple[any, any]:
-        self.eq(lhs, rhs)
-        return 1, 1
+    def subs_eq(self, lhs: any, rhs: any = None) -> tuple[any, any]:
+        if rhs is None:
+            # Support subs with dictionary provided.
+            if isinstance(lhs, dict):
+                for key, value in lhs.items():
+                    if key in self._all_symbols:
+                        self.eq(key, value)
+        else:
+            self.eq(lhs, rhs)
+
+        return self.answer_symbol(), self.answer_symbol()
 
     def solve(self, *args, **kwargs):
         # Solve expressions are eq expressions (if they are not already in which case the following case is False).
