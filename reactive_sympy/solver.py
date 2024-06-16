@@ -1,7 +1,7 @@
 import sympy
 
 
-class ReactiveSymbol(sympy.Symbol):
+class SolverSymbol(sympy.Symbol):
     values: list[any]
 
     def __new__(cls, name, **assumptions):
@@ -28,9 +28,9 @@ class ReactiveSymbol(sympy.Symbol):
         return [vals for vals in self.values if all([is_known_value(v) for v in vals])]
 
 
-class ReactiveSympy:
-    _all_symbols: list[ReactiveSymbol]
-    _symbol_appearance_order: list[ReactiveSymbol]
+class SympySolver:
+    _all_symbols: list[SolverSymbol]
+    _symbol_appearance_order: list[SolverSymbol]
 
     _original_eqs: list[sympy.Eq]
 
@@ -51,7 +51,7 @@ class ReactiveSympy:
     def symbols(self, names: str, real: bool | None = None, **kwargs):
         symbs = sympy.symbols(
             names,
-            cls=ReactiveSymbol,
+            cls=SolverSymbol,
             real=True if real is None else real,
             **kwargs,
         )
@@ -117,7 +117,7 @@ class ReactiveSympy:
     def solve_expr_in_term_of(
         self,
         expr: sympy.Expr,
-        term: ReactiveSymbol,
+        term: SolverSymbol,
     ):
         solutions = sympy.solve(expr, term)
         if solutions == sympy.true or solutions == sympy.false:
