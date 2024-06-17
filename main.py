@@ -1,28 +1,28 @@
-from reactive_sympy.reactive import ReactiveSympy
+from reactive_sympy.solver import SympySolver
+import sympy as sp
 
-sy = ReactiveSympy()
+sy = SympySolver()
+answer = sy.answer_symbol()
 
-# define the symbols
-x1, x2, y, k, l, ans = sy.symbols("x1 x2 y k l ans")
 
-# sy.eq(x1 - y, 10)
-# sy.eq(x1 + y, 20)
+def sympy_expression(sy):
+    # Let the variables be defined as follows:
+    x, y = sy.symbols("x y")
 
-# define the parabola equation
-sy.eq(y, k * x1**2 - 2 * k * x1 + l)
-sy.eq(y, k * x2**2 - 2 * k * x2 + l)
+    # Given equation
+    equation_1 = sp.Abs(x - 2 * y) + sp.Abs(y - 2 * x) - 40
 
-# the parabola intersects the line y = 4 at two points A and B
-# so we substitute y = 4 into the parabola equation
-sy.eq(y, 4)
-sy.eq(x1 - x2, 6)
+    # Expression which we want to minimize
+    expr = 5 * x**2 + 5 * y**2 - 8 * x * y
 
-sy.eq(ans, x1**2 + y**2 + x2**2 + y**2)
-# sy.solve()
+    # Apply constraint equation_1 to the expression expr
+    expression = expr.subs(*sy.subs_eq(sy.solve(equation_1, y)[0]))
 
-print(f"{x1.solutions=}")
-print(f"{x2.solutions=}")
-print(f"{y.solutions=}")
-print(f"{k.solutions=}")
-print(f"{l.solutions=}")
-print(f"{ans.solutions=}")
+    return expression
+
+
+result = sympy_expression(sy)
+sy.final_eq(answer, result)
+final_answer = sy.finalize()
+
+print(final_answer)
