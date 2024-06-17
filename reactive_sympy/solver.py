@@ -94,19 +94,31 @@ class SympySolver:
 
         return self.answer_symbol(), self.answer_symbol()
 
+    def _solve_eq(self, expr):
+        expr = sympy.Eq(expr, 0)
+        if expr != sympy.true and expr != sympy.false:
+            self.eq(expr, 0)
+
     def solve(self, *args, **kwargs):
         # Solve expressions are eq expressions (if they are not already in which case the following case is False).
         if len(args) > 0:
-            expr = sympy.Eq(args[0], 0)
-            if expr != sympy.true and expr != sympy.false:
-                self.eq(args[0], 0)
+            exprs = args[0]
+            if not isinstance(exprs, list):
+                exprs = [exprs]
+
+            for expr in exprs:
+                self._solve_eq(expr)
 
         return sympy.solve(*args, **kwargs)
 
     def solve_free_symbols(self, eq: any):
+        ans_sym = self.answer_symbol()
         resolved_all_symbols = True
         for sym in eq.free_symbols:
             if sym not in self._all_symbols:
+                continue
+
+            if ans_sym in eq.free_symbols and sym is not ans_sym:
                 continue
 
             resolved = self.solve_expr_in_term_of(eq, sym)
