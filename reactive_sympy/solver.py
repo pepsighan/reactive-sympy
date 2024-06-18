@@ -100,8 +100,8 @@ class SympySolver:
         return self.answer_symbol(), self.answer_symbol()
 
     def _solve_eq(self, expr):
-        expr = sympy.Eq(expr, 0)
-        if expr != sympy.true and expr != sympy.false:
+        check = sympy.Eq(expr, 0)
+        if check != sympy.true and check != sympy.false:
             self.eq(expr, 0)
 
     def solve(self, *args, **kwargs):
