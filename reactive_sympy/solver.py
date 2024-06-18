@@ -108,7 +108,7 @@ class SympySolver:
         # Solve expressions are eq expressions (if they are not already in which case the following case is False).
         if len(args) > 0:
             exprs = args[0]
-            if not isinstance(exprs, list):
+            if not isinstance(exprs, (list, tuple)):
                 exprs = [exprs]
 
             for expr in exprs:
