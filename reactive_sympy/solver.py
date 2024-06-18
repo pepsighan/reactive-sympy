@@ -142,14 +142,17 @@ class SympySolver:
         return True
 
     def finalize(self):
-        # for eq in self._original_eqs:
-        #     self.solve_free_symbols(eq)
+        for eq in self._original_eqs:
+            self.solve_free_symbols(eq)
 
         ans_symbol = self.answer_symbol()
 
         for eq in self._original_eqs:
             for symbol in self._all_symbols:
                 eq_syms = sympy.solve(eq, symbol)
+                if eq_syms == sympy.true or eq_syms == sympy.false:
+                    continue
+
                 if len(eq_syms) == 0:
                     continue
                 for an_eq in self._original_eqs:
