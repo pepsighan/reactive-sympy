@@ -74,6 +74,11 @@ class SympySolver:
 
     def final_eq(self, lhs: any, rhs: any) -> sympy.Eq:
         if isinstance(rhs, sympy.Eq):
+            if len(rhs.free_symbols) == 1:
+                # If only one variable, it means that itself is the variable that is same as answer.
+                rhs = rhs.subs(rhs.free_symbols.pop(), lhs)
+                return self.eq(rhs.lhs, rhs.rhs)
+
             if rhs.lhs in self._all_symbols:
                 return self.eq(lhs, rhs.rhs)
 
